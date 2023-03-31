@@ -22,11 +22,12 @@ np.random.seed(RUN_NUMBER)
 
 
 #Initialize:
-with open('model.pckl', 'rb') as f:
-    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, CONSTRAINT, N_STATES, actions, EPISODE_LENGTH, DELTA] = pickle.load(f)
+with open('model.pkl', 'rb') as f:
+    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, 
+    CONSTRAINT, N_STATES, actions_per_state, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
-with  open('solution.pckl', 'rb') as f:
-    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon] = pickle.load(f) # unconstrained solution is not used in DOPE
+with  open('solution.pkl', 'rb') as f:
+    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) # unconstrained solution is not used in DOPE
 
 with open('base.pckl', 'rb') as f:
     [pi_b, val_b, cost_b, q_b] = pickle.load(f)
@@ -36,7 +37,9 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 Cb = cost_b[0, 0]
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
 
-K0 =int(N_STATES**3*EPISODE_LENGTH**3/((CONSTRAINT - Cb)**2)) # this is the number of episodes to run the base policy, implementation difference?
+k0 = 0.3 * NUMBER_EPISODES
+# K0 =int(N_STATES**3*EPISODE_LENGTH**3/((CONSTRAINT - Cb)**2)) 
+# this is the number of episodes to run the base policy, implementation difference?
 # K0 = N_STATES**3*EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2)
 # N_STATES ~ A, thus N_STATES**3. But in the paper, EPISODE_LENGTH is **4 
 # In the paper, it is calculated as K0 = N_STATES**2 *A *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2)
@@ -51,13 +54,15 @@ ObjRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 
-L = math.log(6 * N_STATES**2 * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) #math.log(2 * N_STATES * EPISODE_LENGTH * NUMBER_EPISODES * N_STATES**2 / DELTA)
+L = math.log(6 * N_STATES**2 * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) 
+#math.log(2 * N_STATES * EPISODE_LENGTH * NUMBER_EPISODES * N_STATES**2 / DELTA)
 # L missing *2, as shown in the paper ?
-
 
 for sim in tqdm(range(NUMBER_SIMULATIONS)):
 
-    util_methods = utils(EPS, DELTA, M, P, R, C, EPISODE_LENGTH, N_STATES, actions, CONSTRAINT, Cb) # set the utility methods for each run
+    util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
+                         EPISODE_LENGTH, N_STATES, actions_per_state, CONSTRAINT, Cb) # set the utility methods for each run
+                         
     ep_count = np.zeros((N_STATES, N_STATES)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_STATES, N_STATES))
     objs = [] # objective regret for current run
@@ -104,7 +109,7 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
         ep_count = np.zeros((N_STATES, N_STATES))
         ep_count_p = np.zeros((N_STATES, N_STATES, N_STATES))
         
-        s = 0 # initial state is always fixed to 0
+        s = 0 # initial state is always fixed to 0 +++++
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             #if sum(prob) != 1:
@@ -145,8 +150,7 @@ with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)
 
 # print(NUMBER_INFEASIBILITIES)
-
-#print(util_methods.NUMBER_OF_OCCURANCES[0])
+# print(util_methods.NUMBER_OF_OCCURANCES[0])
 
 
 

@@ -5,13 +5,14 @@ import math
 import sys
 
 class utils:
-    def __init__(self,eps, delta, M, P,R,C,EPISODE_LENGTH,N_STATES,ACTIONS,CONSTRAINT,Cb):
+    def __init__(self, eps, delta, M, P, R, C, INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
 
         self.P = P.copy()
         self.R = R.copy()
         self.C = C.copy()
         self.EPISODE_LENGTH = EPISODE_LENGTH
         self.N_STATES = N_STATES
+        self.N_ACTIONS = N_ACTIONS
         self.ACTIONS = ACTIONS
         self.eps = eps
         self.delta = delta
@@ -22,13 +23,11 @@ class utils:
         self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         #self.P_tilde = np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         
-        
         #self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
-        
-        
+                
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         self.beta_prob = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -38,7 +37,9 @@ class utils:
         self.Psparse = [[[] for i in self.ACTIONS] for j in range(self.N_STATES)] # dict(), [s][a] --> list of s'
         
         self.mu = np.zeros(self.N_STATES) # an array indicating if the initial state is fixed
-        self.mu[0] = 1.0 # initial state is fixed
+        # self.mu[0] = 1.0 # initial state is fixed
+        self.mu[INIT_STATE_INDEX] = 1.0 # initial state is fixed to most frequent BLR state 
+
         self.CONSTRAINT = CONSTRAINT
         
         self.R_Tao = {}
@@ -64,8 +65,11 @@ class utils:
             for a in self.ACTIONS[s]:
                 self.P_hat[s][a] = np.zeros(self.N_STATES) # initialize the estimated transition probabilities
                 for s_1 in range(self.N_STATES):
-                    if self.P[s][a][s_1] > 0:
-                        self.Psparse[s][a].append(s_1) # collect list of s' for each P[s][a]
+
+                    # because we stored P in sparse format, we have to handle key error
+                    if (s, a, s_1) in self.P: # to avoid key error                       
+                        if self.P[s][a][s_1] > 0:
+                            self.Psparse[s][a].append(s_1) # collect list of s' for each P[s][a]
     
 
     def step(self,s, a, h):  # take a step in the environment
@@ -76,6 +80,7 @@ class utils:
         next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
         rew = self.R[s][a]
         cost = self.C[s][a]
+
         return next_state,rew, cost
 
 
@@ -151,7 +156,7 @@ class utils:
     
         #create problem variables
         q_keys = [(h,s,a) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]
-        q = p.LpVariable.dicts("q",q_keys,lowBound=0,cat='Continuous') # q is the decision variable w_h(s,a) in the paper. Here uses a dict with keys (h,s,a)
+        q = p.LpVariable.dicts("q", q_keys, lowBound=0, cat='Continuous') # q is the decision variable w_h(s,a) in the paper. Here uses a dict with keys (h,s,a)
         # define the lower bound of q as 0, so that the decision variable is non-negative, equation 17(e)
         
         #Objective function, equation 17(a)
@@ -222,23 +227,29 @@ class utils:
                                                                           
         return opt_policy, value_of_policy, cost_of_policy, q_policy
                                                                                   
-                                                                                  
+    # ++++++ solve for the optimal policy with constrained LP solver ++++++                               
     def compute_opt_LP_Constrained(self, ep):
 
         print("\nComputing optimal policy with constrained LP solver ...")
 
-        opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) #[s,h,a], note here the action dimension is N_STATES
-        opt_prob = p.LpProblem("OPT_LP_problem",p.LpMaximize)
-        opt_q = np.zeros((self.EPISODE_LENGTH,self.N_STATES,self.N_STATES)) #[h,s,a], note here the action dimension is N_STATES
+        opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS)) #[s,h,a]
+        opt_prob = p.LpProblem("OPT_LP_problem",p.LpMinimize) # minimize the CVRisk
+        opt_q = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS)) #[h,s,a]
                                                                                   
-        #create problem variables
-        q_keys = [(h,s,a) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]
+        # create problem variables
+        q_keys = [(h, s, a) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]
                                                                                           
-        q = p.LpVariable.dicts("q",q_keys,lowBound=0,cat='Continuous')
+        q = p.LpVariable.dicts("q", q_keys,lowBound=0, cat='Continuous')
 
-        opt_prob += p.lpSum([q[(h,s,a)]*self.R[s][a] for  h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) # objective function
+        # objective function
+        opt_prob += p.lpSum([q[(h,s,a)]*self.R[s][a] 
+                            for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) 
             
-        opt_prob += p.lpSum([q[(h,s,a)]*self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 # constrained !!!
+        # constraints
+        # sbp within the range [110, 125] for all time steps
+        opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
+                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
+
             
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -248,13 +259,13 @@ class utils:
 
         for s in range(self.N_STATES):
             q_list = [q[(0,s,a)] for a in self.ACTIONS[s]]
-            opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d)
+            opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
         status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
         #print(p.LpStatus[status])   # The solution status
         #print(opt_prob)
-        print("printing best value constrained")
-        print(p.value(opt_prob.objective))
+        print("printing best value constrained:", p.value(opt_prob.objective))
+        # print(p.value(opt_prob.objective))
                                                                                                                   
         # for constraint in opt_prob.constraints:
         #     print(opt_prob.constraints[constraint].name, opt_prob.constraints[constraint].value() - opt_prob.constraints[constraint].constant)
@@ -271,6 +282,7 @@ class utils:
 
                         if math.isnan(opt_policy[s,h,a]):
                             opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
+
                         elif opt_policy[s,h,a] > 1.0:
                             print("invalid value printing")
                             print("opt_policy[s,h,a]", opt_policy[s,h,a])
@@ -293,11 +305,12 @@ class utils:
                     
                 con_policy  += opt_q[h,s,a]*self.C[s][a]
                 val_policy += opt_q[h,s,a]*self.R[s][a]
-        print("value from the conLPsolver")
-        print("value of policy", val_policy)
-        print("cost of policy", con_policy)
+        print("\nvalue from the conLPsolver:")
+        print("value of policy =", val_policy)
+        print("cost of policy =", con_policy)
 
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C) # evaluate the optimal policy using finite horizon policy evaluation
+        # evaluate the optimal policy using finite horizon policy evaluation
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C) 
                                                                                                                                                                           
         return opt_policy, value_of_policy, cost_of_policy, q_policy
                                                                                                                                                                                   
@@ -652,10 +665,10 @@ class utils:
 
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
-    def FiniteHorizon_Policy_evaluation(self,Px,policy,R,C):
+    def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C):
         
         # results to be returned
-        q = np.zeros((self.N_STATES,self.EPISODE_LENGTH, self.N_STATES)) # q(s,h,a), q_policy, expected cumulative rewards
+        q = np.zeros((self.N_STATES,self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
         v = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # v(s,h), expected cumulative value of the calculated optimal policy
         c = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
 
@@ -700,10 +713,10 @@ class utils:
                         z += Px[s][a][s_] * v[s_, h+1]
                     q[s, h, a] = R[s][a] + z # expected cumulative rewards = current reward of taking action a at state s + expected cumulative value of the state s_ at time h+1
                 v[s,h] = np.dot(q[s, h, :],policy[s, h, :]) # expected cumulative value, regardless of the action taken  
-        #print("evaluation",v)
-                
+        #print("evaluation",v)                
 
         return q, v, c
+
 
     def compute_qVals_EVI(self, Rx):
         # Extended value iteration
