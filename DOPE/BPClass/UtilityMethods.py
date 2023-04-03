@@ -84,7 +84,7 @@ class utils:
         return next_state,rew, cost
 
 
-    def setCounts(self,ep_count_p,ep_count): # add the counts of the current episode to the total counts
+    def setCounts(self,ep_count_p, ep_count): # add the counts of the current episode to the total counts
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 self.NUMBER_OF_OCCURANCES[s][a] += ep_count[s, a]
@@ -92,12 +92,16 @@ class utils:
                     self.NUMBER_OF_OCCURANCES_p[s][a, s_] += ep_count_p[s, a, s_]
 
 
-    def compute_confidence_intervals(self,ep, mode): # compute the confidence intervals beta for the transition probabilities
+    # compute the confidence intervals beta for the transition probabilities
+    def compute_confidence_intervals(self, ep, mode): 
+
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 if self.NUMBER_OF_OCCURANCES[s][a] == 0:
                     self.beta_prob[s][a, :] = np.ones(self.N_STATES)
-                    self.beta_prob_T[s][a] = np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a],1)) # not sure what is beta_prob_T used for? Used in other algorithms
+                    self.beta_prob_T[s][a] = np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a],1)) 
+                    # not sure what is beta_prob_T used for? Used in other algorithms
+
                 else:
                     if mode == 2:
                         self.beta_prob[s][a, :] = min(np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)*np.ones(self.N_STATES)
@@ -106,13 +110,15 @@ class utils:
                         
                     for s_1 in range(self.N_STATES):
                         if mode == 0:
-                            # DOPE policy, which equation?
-                            self.beta_prob[s][a,s_1] = min(np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + ep/(max(self.NUMBER_OF_OCCURANCES[s][a],1)), ep/(max(np.sqrt(self.NUMBER_OF_OCCURANCES[s][a]),1)), 1)
+                            # DOPE policy, which equation? SBP, CVDRisk bound
+                            self.beta_prob[s][a,s_1] = min(np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                           ep/(max(self.NUMBER_OF_OCCURANCES[s][a],1)), ep/(max(np.sqrt(self.NUMBER_OF_OCCURANCES[s][a]),1)), 1)
                         
                         elif mode == 1:
                             # safe base policy 
                             # equation (5) in the paper to calculate the confidence interval for P
-                            self.beta_prob[s][a, s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
+                            self.beta_prob[s][a, s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                            14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
                         
                 self.beta_prob_1[s][a] = max(self.beta_prob[s][a, :])
                 self.beta_prob_2[s][a] = sum(self.beta_prob[s][a, :])
@@ -127,8 +133,10 @@ class utils:
                     self.P_hat[s][a] = 1/self.N_STATES*np.ones(self.N_STATES) # uniform distribution for unvisited state-action pairs
                 else:
                     for s_1 in range(self.N_STATES):
-                        self.P_hat[s][a][s_1] = self.NUMBER_OF_OCCURANCES_p[s][a,s_1]/(max(self.NUMBER_OF_OCCURANCES[s][a],1)) #calculate the estimated/empirical probabilities
-                    self.P_hat[s][a] /= np.sum(self.P_hat[s][a]) # normalize the probabilities
+                        self.P_hat[s][a][s_1] = self.NUMBER_OF_OCCURANCES_p[s][a,s_1]/(max(self.NUMBER_OF_OCCURANCES[s][a],1)) 
+                        #calculate the estimated/empirical probabilities
+
+                    self.P_hat[s][a] /= np.sum(self.P_hat[s][a]) # normalize the transition probabilities
 
                 if abs(sum(self.P_hat[s][a]) - 1)  >  0.001: # sanity check  after updating the probabilities
                     print("empirical is wrong")
@@ -227,7 +235,8 @@ class utils:
                                                                           
         return opt_policy, value_of_policy, cost_of_policy, q_policy
                                                                                   
-    # ++++++ solve for the optimal policy with constrained LP solver ++++++                               
+    # ++++++ solve for the optimal policy with constrained LP solver ++++++
+    # also used to solve the baseline policy                               
     def compute_opt_LP_Constrained(self, ep):
 
         print("\nComputing optimal policy with constrained LP solver ...")
@@ -316,8 +325,8 @@ class utils:
                                                                                                                                                                                   
                                                                                                                                                                                   
                                                                                                                                                                                   
-
-    def compute_extended_LP(self,ep, cb):
+    # ++++ compute the optimal policy using the extended Linear Programming +++
+    def compute_extended_LP(self, ep, cb):
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h
@@ -327,13 +336,14 @@ class utils:
             - q_policy: expected cumulative rewards for [s,h,a]
         """
 
-        opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) #[s,h,a]
-        opt_prob = p.LpProblem("OPT_LP_problem",p.LpMaximize) # maximize the expected cumulative reward
-        opt_z = np.zeros((self.EPISODE_LENGTH,self.N_STATES,self.N_STATES,self.N_STATES)) #[h,s,a,s_], decision variable, state-action-state occupancy measure
+        opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]
+        opt_prob = p.LpProblem("OPT_LP_problem", p.LpMinimize) # minimize the expected cumulative CVDRisk
+        opt_z = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS, self.N_STATES)) #[h,s,a,s_], decision variable, state-action-state occupancy measure
         #create problem variables
         
         z_keys = [(h,s,a,s_1) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
-        z = p.LpVariable.dicts("z_var",z_keys,lowBound=0,upBound=1,cat='Continuous') # why the upperbound is 1? Because the Z is essentially probability, and the probability is between 0 and 1
+        z = p.LpVariable.dicts("z_var", z_keys, lowBound=0, upBound=1, cat='Continuous') 
+        # why the upperbound is 1? Because the Z is essentially probability, and the probability is between 0 and 1
         # lower bound is 0, because the occupancy measure is non-negative, constraint (18e) in the paper
             
         # r_k = {}
@@ -347,9 +357,14 @@ class utils:
         # why not adding the confidence bound to the objective function? as shown in equation (18a) in the papers
         opt_prob += p.lpSum([z[(h,s,a,s_1)]*self.R[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]])
 
-        #Constraints equation 18(b)                                   # why plus sign here, not minus sign?
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]*(self.C[s][a] + self.EPISODE_LENGTH*self.beta_prob_2[s][a]) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
-
+        #Constraints equation 18(b)                                  
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(self.C[s][a] + self.EPISODE_LENGTH*self.beta_prob_2[s][a]), 0) + 
+                                               max(self.C[s][a] - self.EPISODE_LENGTH*self.beta_prob_2[s][a] - 125, 0)) 
+                                            for h in range(self.EPISODE_LENGTH) 
+                                            for s in range(self.N_STATES) 
+                                            for a in self.ACTIONS[s] 
+                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
+        
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
                 z_list = [z[(h,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
@@ -360,7 +375,6 @@ class utils:
             q_list = [z[(0,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # constraint (18d) in the paper
                                                                                                                                                                                                                       
-                                                                                                                                                                                                                      #start_time = time.time()
         for h in range(self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
                 for a in self.ACTIONS[s]:
@@ -372,7 +386,7 @@ class utils:
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
             print(p.LpStatus[status])
-            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_STATES)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_STATES))
+            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS))
                                                                                                                                                                                                                                                   
         for h in range(self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -417,6 +431,7 @@ class utils:
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
+
     
     
     def compute_LP_Tao(self, ep, cb):
@@ -665,6 +680,7 @@ class utils:
 
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
+    # ++++ Finite Horizon Policy Evaluation ++++
     def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C):
         
         # results to be returned
@@ -681,7 +697,7 @@ class utils:
             x = 0
             for a in self.ACTIONS[s]:
                 x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
-            c[s,self.EPISODE_LENGTH-1] = x #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
+            c[s, self.EPISODE_LENGTH-1] = x #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
 
             for a in self.ACTIONS[s]:
                 q[s, self.EPISODE_LENGTH-1, a] = R[s][a]
