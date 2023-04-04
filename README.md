@@ -14,3 +14,4 @@ Safe RL for Healthcare
   
 3. The `DOPE.py` runs the main algorithm
    * Learns the objective regrets, and constraint regrets of the learned policy
+   * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`

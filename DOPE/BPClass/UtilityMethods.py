@@ -23,8 +23,8 @@ class utils:
         self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         #self.P_tilde = np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         
-        #self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
-        #self.C_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
                 
@@ -34,6 +34,8 @@ class utils:
         self.beta_prob_1 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.beta_prob_2 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.beta_prob_T = {}
+        self.sbp_cvdrisk_confidence = {}
+        self.P_confidence = {}
         self.Psparse = [[[] for i in self.ACTIONS] for j in range(self.N_STATES)] # dict(), [s][a] --> list of s'
         
         self.mu = np.zeros(self.N_STATES) # an array indicating if the initial state is fixed
@@ -59,6 +61,8 @@ class utils:
             self.beta_prob_1[s] = np.zeros(l)
             self.beta_prob_2[s] = np.zeros(l)
             self.beta_prob_T[s] = np.zeros(l)
+            self.sbp_cvdrisk_confidence[s] = np.zeros(l)
+            self.P_confidence[s] = np.zeros(l)
             self.NUMBER_OF_OCCURANCES_p[s] = np.zeros((l, N_STATES)) # initialize the number of occurences of [s][a, s']
             self.beta_prob[s] = np.zeros((l, N_STATES)) # [s][a, s']
             
@@ -93,8 +97,8 @@ class utils:
 
 
     # compute the confidence intervals beta for the transition probabilities
-    def compute_confidence_intervals(self, ep, mode): 
-
+    def compute_confidence_intervals(self, ep, L_prime, mode): 
+                                         # ep = L
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 if self.NUMBER_OF_OCCURANCES[s][a] == 0:
@@ -115,13 +119,18 @@ class utils:
                                                            ep/(max(self.NUMBER_OF_OCCURANCES[s][a],1)), ep/(max(np.sqrt(self.NUMBER_OF_OCCURANCES[s][a]),1)), 1)
                         
                         elif mode == 1:
-                            # safe base policy 
                             # equation (5) in the paper to calculate the confidence interval for P
                             self.beta_prob[s][a, s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
                                                             14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
+
                         
                 self.beta_prob_1[s][a] = max(self.beta_prob[s][a, :])
                 self.beta_prob_2[s][a] = sum(self.beta_prob[s][a, :])
+
+                # self.P_confidence[s][a] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                #                                             14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
+
+                self.sbp_cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1)
 
 
     def update_empirical_model(self,ep): # update the empirical/estimated model based on the counters every episode
@@ -142,7 +151,18 @@ class utils:
                     print("empirical is wrong")
                     print(self.P_hat)
                     
-                    
+    def update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost):
+
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                self.Total_emp_reward[s][a] = self.Total_emp_reward[s][a] + ep_emp_reward[s][a]
+                self.R_hat[s][a] = self.Total_emp_reward[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a] ,1))
+                
+                self.Total_emp_cost[s][a] = self.Total_emp_cost[s][a] + ep_emp_cost[s][a]
+                self.C_hat[s][a] = self.Total_emp_cost[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))
+                        
+
+
     def update_costs(self):
         alpha_r = (self.N_STATES*self.EPISODE_LENGTH) + 4*self.EPISODE_LENGTH*(self.N_STATES*self.EPISODE_LENGTH)/(self.CONSTRAINT-self.Cb)
         for s in range(self.N_STATES):
@@ -327,6 +347,7 @@ class utils:
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
     def compute_extended_LP(self, ep, cb):
+        # ep not used here
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h
@@ -346,20 +367,34 @@ class utils:
         # why the upperbound is 1? Because the Z is essentially probability, and the probability is between 0 and 1
         # lower bound is 0, because the occupancy measure is non-negative, constraint (18e) in the paper
             
-        # r_k = {}
-        # for s in range(self.N_STATES):
-        #     l = len(self.ACTIONS[s])
-        #     r_k[s] = np.zeros(l)
-        #     for a in self.ACTIONS[s]:
-        #         r_k[s][a] = self.R[s][a] + self.EPISODE_LENGTH**2/(self.CONSTRAINT - cb)* self.beta_prob_2[s][a]
+        r_k = {}
+        c_k1 = {}
+        c_k2 = {}
+        for s in range(self.N_STATES):
+            l = len(self.ACTIONS[s])
+            r_k[s] = np.zeros(l)
+            c_k1[s] = np.zeros(l)
+            c_k2[s] = np.zeros(l)
+
+            for a in self.ACTIONS[s]:
+                # r_k[s][a] = self.R_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a] # double check why need to times EPISODE_LENGTH !!!!!
+                # c_k1[s][a] = self.C_hat[s][a] + self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
+                # c_k2[s][a] = self.C_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
+
+                r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] 
+                c_k1[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a]
+                c_k2[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a]
 
         # objective function
-        # why not adding the confidence bound to the objective function? as shown in equation (18a) in the papers
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]*self.R[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]])
+        # equation (18a) in the paper
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]*self.r_k[s][a] for h in range(self.EPISODE_LENGTH) 
+                                                           for s in range(self.N_STATES) 
+                                                           for a in self.ACTIONS[s] 
+                                                           for s_1 in self.Psparse[s][a]])
 
-        #Constraints equation 18(b)                                  
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(self.C[s][a] + self.EPISODE_LENGTH*self.beta_prob_2[s][a]), 0) + 
-                                               max(self.C[s][a] - self.EPISODE_LENGTH*self.beta_prob_2[s][a] - 125, 0)) 
+        # Constraints equation 18(b)                                  
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(self.c_k1[s][a]), 0) + 
+                                               max(self.c_k2[s][a] - 125, 0)) 
                                             for h in range(self.EPISODE_LENGTH) 
                                             for s in range(self.N_STATES) 
                                             for a in self.ACTIONS[s] 

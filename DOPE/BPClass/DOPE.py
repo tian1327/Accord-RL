@@ -62,8 +62,9 @@ ObjRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 
-# L = math.log(6 * N_STATES**2 * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) 
-L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) 
+
+L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
+L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
 
 
@@ -74,6 +75,15 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
 
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
+
+    for s in range(N_STATES):
+        ep_emp_reward[s] = {}
+        ep_emp_cost[s] = {}
+        for a in range(N_ACTIONS):
+            ep_emp_reward[s][a] = 0
+            ep_emp_cost[s][a] = 0
+
+
     objs = [] # objective regret for current run
     cons = []
     for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
@@ -85,12 +95,15 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
             q_k = q_b
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
-            util_methods.compute_confidence_intervals(L, 1) # compute the confidence intervals for the transition probabilities beta
+            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
+            util_methods.compute_confidence_intervals(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
 
         else: # use the DOPE policy when the episode is greater than K0
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
-            util_methods.compute_confidence_intervals(L, 0)
+            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
+            util_methods.compute_confidence_intervals(L, L_prime, 1)
+
             t1 = time.time()
             pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
             t2 = time.time()
@@ -121,9 +134,16 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
         ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
+        for s in range(N_STATES):
+            ep_emp_reward[s] = {}
+            ep_emp_cost[s] = {}
+            for a in range(N_ACTIONS):
+                ep_emp_reward[s][a] = 0
+                ep_emp_cost[s][a] = 0        
         
         # s = 0 # initial state is always fixed to 0 +++++
-        s = INIT_STATE_INDEX
+        s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
+        
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             #if sum(prob) != 1:
@@ -133,6 +153,8 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
+            ep_emp_reward[s][a] += rew
+            ep_emp_cost[s][a] += cost
             s = next_state
 
         # dump results out every 50000 episodes
@@ -158,7 +180,7 @@ ObjRegret_std = np.std(ObjRegret2, axis = 0)
 ConRegret_std = np.std(ConRegret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'regrets_' + str(RUN_NUMBER) + '.pckl'
+filename = 'regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)
 
