@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-alpha = 0.05
+alpha = 0.03
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
