@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-alpha = 0.3
+alpha = 1
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -71,11 +71,12 @@ L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODE
 for sim in tqdm(range(NUMBER_SIMULATIONS)):
 
     util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
-                         EPISODE_LENGTH, N_STATES, actions_per_state, CONSTRAINT, Cb) # set the utility methods for each run
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, actions_per_state, CONSTRAINT, Cb) # set the utility methods for each run
 
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
-
+    ep_emp_reward = {} # initialize the empirical rewards and costs for each run
+    ep_emp_cost = {}
     for s in range(N_STATES):
         ep_emp_reward[s] = {}
         ep_emp_cost[s] = {}
@@ -143,12 +144,24 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
         
         # s = 0 # initial state is always fixed to 0 +++++
         s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
-        
+
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
-            #if sum(prob) != 1:
+            
+            # if sum(prob) != 1:
             #    print(s, h)
             #    print(prob)
+            
+            # # check if prob has any negative values
+            # for i in range(len(prob)):
+            #     if prob[i] < 0:
+            #         # print("negative prob: ", prob[i])
+            #         prob[i] = 0
+            
+            # assign uniform prob to prob, used for testing the code only
+            # for i in range(len(prob)):
+            #         prob[i] = 1/len(prob)
+
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             ep_count[s, a] += 1 # update the counter

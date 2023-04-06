@@ -25,6 +25,8 @@ class utils:
         
         self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.C_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.Total_emp_reward = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.Total_emp_cost = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
                 
@@ -151,7 +153,7 @@ class utils:
                     print("empirical is wrong")
                     print(self.P_hat)
                     
-    def update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost):
+    def update_empirical_rewards_costs(self, ep_emp_reward, ep_emp_cost):
 
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
