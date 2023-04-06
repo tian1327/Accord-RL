@@ -26,7 +26,7 @@ np.random.seed(RUN_NUMBER)
 
 # Initialize:
 with open('model.pkl', 'rb') as f:
-    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST,
+    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index,
     CONSTRAINT, Cb, N_STATES, N_ACTIONS, actions_per_state, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('solution.pkl', 'rb') as f:
@@ -146,7 +146,11 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
         # s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        s = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
+        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
+        s = state_code_to_index[s_code[0]]
+        # print('s = ', s)
+        # print('s_idx = ', s_idx)
+        
 
         # update self.mu
         util_methods.update_mu(s)
