@@ -38,8 +38,10 @@ class utils:
         self.beta_prob_T = {}
         self.sbp_cvdrisk_confidence = {}
         self.P_confidence = {}
-        self.Psparse = [[[] for i in self.ACTIONS] for j in range(self.N_STATES)] # dict(), [s][a] --> list of s'
-        
+        self.Psparse = [[[] for i in range(self.N_ACTIONS)] for j in range(self.N_STATES)] # dict(), [s][a] --> list of s'
+
+        # print dimension of self.Psparse
+        # print('self.Psparse dimension: ', len(self.Psparse), len(self.Psparse[0]))    
         self.mu = np.zeros(self.N_STATES) # an array indicating if the initial state is fixed
         # self.mu[0] = 1.0 # initial state is fixed
         self.mu[INIT_STATE_INDEX] = 1.0 # initial state is fixed to most frequent BLR state 
@@ -71,6 +73,7 @@ class utils:
             for a in self.ACTIONS[s]:
                 self.P_hat[s][a] = np.zeros(self.N_STATES) # initialize the estimated transition probabilities
                 for s_1 in range(self.N_STATES):
+                    # self.Psparse[s][a].append(s_1) # collect list of s' for each P[s][a]
 
                     # because we stored P in sparse format, we have to handle key error
                     if (s, a, s_1) in self.P: # to avoid key error                       

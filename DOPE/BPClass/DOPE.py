@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-alpha = 1
+alpha = 0.05
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -42,11 +42,14 @@ print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
 print("cost_b_00 =", cost_b_00)
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
+print("N_STATES =", N_STATES)
+print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 # K0 = 0.3 * NUMBER_EPISODES
-# K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
+K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
+
+# K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
 
 print()
 print("alpha =", alpha)
@@ -115,7 +118,7 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
                 # val_k = val_b
                 # cost_k = cost_b
                 # q_k = q_b
-                print(log)
+                print('log:', log)
         
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[0, 0] - opt_value_LP_con[0, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
