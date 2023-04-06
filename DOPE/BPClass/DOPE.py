@@ -26,7 +26,7 @@ np.random.seed(RUN_NUMBER)
 
 # Initialize:
 with open('model.pkl', 'rb') as f:
-    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, 
+    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST,
     CONSTRAINT, Cb, N_STATES, N_ACTIONS, actions_per_state, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('solution.pkl', 'rb') as f:
@@ -143,7 +143,13 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
                 ep_emp_cost[s][a] = 0        
         
         # s = 0 # initial state is always fixed to 0 +++++
-        s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
+        # s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
+
+        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        s = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
+
+        # update self.mu
+        util_methods.update_mu(s)
 
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]

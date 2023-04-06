@@ -89,7 +89,10 @@ class utils:
 
         return next_state,rew, cost
 
-
+    def update_mu(self, init_state):
+        self.mu = np.zeros(self.N_STATES)
+        self.mu[init_state] = 1.0
+        
     def setCounts(self,ep_count_p, ep_count): # add the counts of the current episode to the total counts
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
