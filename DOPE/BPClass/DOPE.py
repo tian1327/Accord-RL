@@ -14,20 +14,20 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-alpha = 0.03
+NUMBER_EPISODES = 1e5
+alpha = 1000000
+NUMBER_SIMULATIONS = 1
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
-
-
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 # Initialize:
 with open('model.pkl', 'rb') as f:
-    [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index,
-    CONSTRAINT, Cb, N_STATES, N_ACTIONS, actions_per_state, EPISODE_LENGTH, DELTA] = pickle.load(f)
+    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, 
+     N_STATES, N_ACTIONS, actions_per_state, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('solution.pkl', 'rb') as f:
     [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
@@ -37,19 +37,17 @@ with open('base.pkl', 'rb') as f:
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
-cost_b_00 = cost_b[0, 0]
+
+Cb = cost_b[0, 0]
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
-print("cost_b_00 =", cost_b_00)
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
 print("N_STATES =", N_STATES)
 print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
-# K0 = 0.3 * NUMBER_EPISODES
-K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-
-# K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
+# K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
+K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
 
 print()
 print("alpha =", alpha)
@@ -69,7 +67,8 @@ NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
 L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
-
+print("L =", L)
+print("L_prime =", L_prime)
 
 for sim in tqdm(range(NUMBER_SIMULATIONS)):
 
@@ -91,6 +90,8 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
     objs = [] # objective regret for current run
     cons = []
     for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
+
+        found_optimal = False
         
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
@@ -109,16 +110,23 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
             util_methods.compute_confidence_intervals(L, L_prime, 1)
 
             t1 = time.time()
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) 
             t2 = time.time()
             print("time for extended LP = {:.2f} s".format(t2 - t1))
             
             if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
-                # pi_k = pi_b
-                # val_k = val_b
-                # cost_k = cost_b
-                # q_k = q_b
+                pi_k = pi_b
+                val_k = val_b
+                cost_k = cost_b
+                q_k = q_b
                 print('log:', log)
+            else:
+                if not found_optimal:
+                    print('log:', log)
+                    print('In episode', episode, 'found optimal policy')
+                    print('k0 should be at least', episode)
+                    found_optimal = True
         
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[0, 0] - opt_value_LP_con[0, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
@@ -161,9 +169,9 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             
-            # if sum(prob) != 1:
-            #    print(s, h)
-            #    print(prob)
+            if sum(prob) != 1:
+               print(s, h)
+               print(prob)
             
             # # check if prob has any negative values
             # for i in range(len(prob)):

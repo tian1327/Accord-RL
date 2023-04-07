@@ -86,9 +86,14 @@ class utils:
         probs = np.zeros((self.N_STATES))
         for next_s in range(self.N_STATES):
             probs[next_s] = self.P[s][a][next_s]
-        next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
+        next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities       
         rew = self.R[s][a]
         cost = self.C[s][a]
+
+        # add some noise to the reward and cost
+        # rew = self.R[s][a] + np.random.normal(0, 0.1)
+        # cost = self.C[s][a] + np.random.normal(0, 0.1)
+
 
         return next_state,rew, cost
 
@@ -128,7 +133,7 @@ class utils:
                         
                         elif mode == 1:
                             # equation (5) in the paper to calculate the confidence interval for P
-                            self.beta_prob[s][a, s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                            self.beta_prob[s][a,s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
                                                             14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
 
                         
@@ -141,7 +146,8 @@ class utils:
                 self.sbp_cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1)
 
 
-    def update_empirical_model(self,ep): # update the empirical/estimated model based on the counters every episode
+    # update the empirical/estimated model based on the counters every episode
+    def update_empirical_model(self,ep): 
         # ep is not used here
 
         for s in range(self.N_STATES):
@@ -356,7 +362,7 @@ class utils:
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
     def compute_extended_LP(self, ep, cb):
-        # ep not used here
+        # ep, cb not used here
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h
@@ -368,7 +374,7 @@ class utils:
 
         opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]
         opt_prob = p.LpProblem("OPT_LP_problem", p.LpMinimize) # minimize the expected cumulative CVDRisk
-        opt_z = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS, self.N_STATES)) #[h,s,a,s_], decision variable, state-action-state occupancy measure
+        opt_z = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS, self.N_STATES)) # [h,s,a,s_], decision variable, state-action-state occupancy measure
         #create problem variables
         
         z_keys = [(h,s,a,s_1) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
@@ -378,21 +384,21 @@ class utils:
             
         r_k = {}
         c_k1 = {}
-        c_k2 = {}
+        # c_k2 = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
             c_k1[s] = np.zeros(l)
-            c_k2[s] = np.zeros(l)
+            # c_k2[s] = np.zeros(l)
 
             for a in self.ACTIONS[s]:
                 # r_k[s][a] = self.R_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a] # double check why need to times EPISODE_LENGTH !!!!!
                 # c_k1[s][a] = self.C_hat[s][a] + self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
                 # c_k2[s][a] = self.C_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
 
-                r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] 
-                c_k1[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a]
-                c_k2[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a]
+                r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
+                c_k1[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
+                # c_k2[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a]
 
         # objective function
         # equation (18a) in the paper
@@ -402,8 +408,14 @@ class utils:
                                                            for s_1 in self.Psparse[s][a]])
 
         # Constraints equation 18(b)                                  
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(self.c_k1[s][a]), 0) + 
-                                               max(self.c_k2[s][a] - 125, 0)) 
+        # opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(self.c_k1[s][a]), 0) + 
+        #                                        max(self.c_k2[s][a] - 125, 0)) 
+        #                                     for h in range(self.EPISODE_LENGTH) 
+        #                                     for s in range(self.N_STATES) 
+        #                                     for a in self.ACTIONS[s] 
+        #                                     for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
+
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c_k1[s][a]) 
                                             for h in range(self.EPISODE_LENGTH) 
                                             for s in range(self.N_STATES) 
                                             for a in self.ACTIONS[s] 
