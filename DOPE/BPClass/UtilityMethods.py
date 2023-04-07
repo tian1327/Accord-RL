@@ -276,7 +276,7 @@ class utils:
         # create problem variables
         q_keys = [(h, s, a) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]
                                                                                           
-        q = p.LpVariable.dicts("q", q_keys,lowBound=0, cat='Continuous')
+        q = p.LpVariable.dicts("q", q_keys, lowBound=0, cat='Continuous')
 
         # objective function
         opt_prob += p.lpSum([q[(h,s,a)]*self.R[s][a] 
@@ -284,9 +284,10 @@ class utils:
             
         # constraints
         # sbp within the range [110, 125] for all time steps
-        opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
-                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
+        # opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
+        #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
 
+        opt_prob += p.lpSum([q[(h,s,a)] * self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
             
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -727,9 +728,9 @@ class utils:
     def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C):
         
         # results to be returned
-        q = np.zeros((self.N_STATES,self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
+        q = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
         v = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # v(s,h), expected cumulative value of the calculated optimal policy
-        c = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
+        c = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
 
         P_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) # P_policy(s,h,s_1), probability of being in state s_1 at time h+1 given that we are in state s at time h and we follow the optimal policy
         R_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # R_policy(s,h), expected reward of being in state s at time h given that we follow the optimal policy
