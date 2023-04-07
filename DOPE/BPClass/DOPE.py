@@ -15,7 +15,7 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e5
-alpha = 1000000
+alpha = 100000
 NUMBER_SIMULATIONS = 1
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
@@ -154,17 +154,16 @@ for sim in tqdm(range(NUMBER_SIMULATIONS)):
                 ep_emp_cost[s][a] = 0        
         
         # s = 0 # initial state is always fixed to 0 +++++
-        # s = INIT_STATE_INDEX # needs to sample unformly from the available init states in the dataset
+        s = INIT_STATE_INDEX # fixed to the most frequently seen initial state in the dataset
 
-        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
-        s = state_code_to_index[s_code[0]]
-        # print('s = ', s)
-        # print('s_idx = ', s_idx)
-        
+        # # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        # s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
+        # s = state_code_to_index[s_code[0]]
+        # # print('s = ', s)
+        # # print('s_idx = ', s_idx)
 
-        # update self.mu
-        util_methods.update_mu(s)
+        # # update self.mu
+        # util_methods.update_mu(s)
 
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]

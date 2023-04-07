@@ -12,6 +12,6 @@ Safe RL for Healthcare
    * linear programming solver
    * update the empirical estimate of P during exploration
   
-3. The `DOPE.py` runs the main algorithm
+3. Then run `python DOPE.py` to run the main algorithm:
    * Learns the objective regrets, and constraint regrets of the learned policy
    * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`

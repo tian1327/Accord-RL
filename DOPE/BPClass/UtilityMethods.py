@@ -86,13 +86,15 @@ class utils:
         probs = np.zeros((self.N_STATES))
         for next_s in range(self.N_STATES):
             probs[next_s] = self.P[s][a][next_s]
-        next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities       
+        next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
+
+        # use †he true reward and cost       
         rew = self.R[s][a]
         cost = self.C[s][a]
 
         # add some noise to the reward and cost
-        # rew = self.R[s][a] + np.random.normal(0, 0.1)
-        # cost = self.C[s][a] + np.random.normal(0, 0.1)
+        # rew = self.R[s][a] + np.random.normal(0, 1)
+        # cost = self.C[s][a] + np.random.normal(0, 1) * 5 # multiply by 5 to make the cost / SBP deviation 5ish
 
 
         return next_state,rew, cost
@@ -396,9 +398,20 @@ class utils:
                 # c_k1[s][a] = self.C_hat[s][a] + self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
                 # c_k2[s][a] = self.C_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
 
-                r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
-                c_k1[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
-                # c_k2[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a]
+                # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
+                # c_k1[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
+                # # c_k2[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a]
+
+                # try without adding confidence bound
+                # r_k[s][a] = self.R_hat[s][a]
+                # c_k1[s][a] = self.C_hat[s][a]
+                # print('self.R_hat[s][a] =', self.R_hat[s][a], 
+                #       'self.C_hat[s][a] =', self.C_hat[s][a],
+                #       'self.sbp_cvdrisk_confidence[s][a] =', self.sbp_cvdrisk_confidence[s][a])
+
+                # try with the true R and C
+                r_k[s][a] = self.R[s][a]
+                c_k1[s][a] = self.C[s][a]
 
         # objective function
         # equation (18a) in the paper
