@@ -105,7 +105,7 @@ class utils:
         cost = self.C[s][a] # this is the SBP feedback, not the deviation 
 
         # add some noise to the reward and cost
-        # rew = self.R[s][a] + np.random.normal(0, 0.2)
+        # rew = self.R[s][a] + np.random.normal(0, 0.1)
         # cost = self.C[s][a] + np.random.normal(0, 5) 
 
 
@@ -482,11 +482,11 @@ class utils:
             for s in range(self.N_STATES):
                 for a in self.ACTIONS[s]:
                     for s_1 in self.Psparse[s][a]:
-                        # opt_prob += z[(h,s,a,s_1)] - (self.P[s][a][s_1] ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        # opt_prob += -z[(h,s,a,s_1)] + (self.P[s][a][s_1] )*  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                        
+                        opt_prob += z[(h,s,a,s_1)] - (self.P[s][a][s_1] + 0.01 ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                        opt_prob += -z[(h,s,a,s_1)] + (self.P[s][a][s_1] - 0.01 )*  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                        
 
-                        opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
+                        # opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                        # opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
 
                         # opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
                         # opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] )* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
