@@ -23,14 +23,14 @@ random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 # Initialize:
-with open('model.pkl', 'rb') as f:
+with open('output/model.pkl', 'rb') as f:
     [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, 
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
-with  open('solution.pkl', 'rb') as f:
+with  open('output/solution.pkl', 'rb') as f:
     [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
 
-with open('base.pkl', 'rb') as f:
+with open('output/base.pkl', 'rb') as f:
     [pi_b, val_b, cost_b, q_b] = pickle.load(f)
 
 EPS = 1 # not used

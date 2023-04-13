@@ -15,3 +15,5 @@ Safe RL for Healthcare
 3. Then run `python DOPE.py` to run the main algorithm:
    * Learns the objective regrets, and constraint regrets of the learned policy
    * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`
+
+4. Run `python plot.py` to plot the `Objective Regret` and `Constraint Regret` 
