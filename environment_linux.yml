@@ -10,7 +10,7 @@ dependencies:
   - aiohttp=3.8.3
   - aiosignal=1.2.0
   - appdirs=1.4.4
-  - appnope=0.1.2
+  # - appnope=0.1.2
   - asttokens=2.0.5
   - astunparse=1.6.3
   - async-timeout=4.0.2
@@ -77,7 +77,7 @@ dependencies:
   - libedit=3.1.20221030
   - libev=4.33
   - libffi=3.4.2
-  - libgfortran=5.0.0
+  # - libgfortran=5.0.0
   - libgfortran5=11.3.0
   - libnghttp2=1.46.0
   - libpng=1.6.37
