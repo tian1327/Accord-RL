@@ -14,7 +14,7 @@ NUMBER_EPISODES_o = 5000
 if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[1]) + 1
 
-L = 100 # marker point interval
+L = 500 # marker point interval
 
 
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -78,8 +78,8 @@ plt.xlabel('Episode')
 plt.ylabel('Objective Regret')
 plt.tight_layout()
 plt.savefig("output/Objective_Regret.pdf")
-plt.close()
-# plt.show()
+# plt.close()
+plt.show()
 
 
 # times = np.arange(1, NUMBER_EPISODES_o+1)
@@ -115,4 +115,4 @@ plt.ylabel('Constraint Regret')
 # ax.set_aspect('equal', adjustable='box')
 plt.tight_layout()
 plt.savefig("output/Constraint_Regret.pdf")
-# plt.show()
+plt.show()
