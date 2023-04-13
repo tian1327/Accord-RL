@@ -1,6 +1,11 @@
 # Accord-RL
 Safe RL for Healthcare
 
+### To install environment
+`conda env create -f environment.yml`
+
+To export current environment: `conda env export > environment.yml`
+
 #### BPClass-DOPE
 
 1. Run `model.ipynb` to: 
