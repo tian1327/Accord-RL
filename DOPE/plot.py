@@ -64,7 +64,7 @@ plt.locator_params(axis='x', nbins=10)
 
 plt.plot(x_o, obj_opsrl_mean[::L], label = 'DOPE', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=1)
 # plt.fill_between(x_o, obj_opsrl_mean[::L] - obj_opsrl_std[::L] ,obj_opsrl_mean[::L] + obj_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
-plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+plt.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 plt.grid()
 plt.legend(loc = 'upper left', prop={'size': 13})
 
