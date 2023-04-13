@@ -14,7 +14,7 @@ NUMBER_EPISODES_o = 5000
 if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[1]) + 1
 
-L = 500 # marker point interval
+L = 10 # marker point interval
 
 
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -62,7 +62,7 @@ ax.patch.set_alpha(0.4)
 plt.locator_params(axis='y', nbins=6)
 plt.locator_params(axis='x', nbins=10)
 
-plt.plot(x_o, obj_opsrl_mean[::L], label = 'DOPE', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=1)
+plt.plot(x_o, obj_opsrl_mean[::L], label = 'DOPE', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=60)
 # plt.fill_between(x_o, obj_opsrl_mean[::L] - obj_opsrl_std[::L] ,obj_opsrl_mean[::L] + obj_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
 plt.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 plt.grid()

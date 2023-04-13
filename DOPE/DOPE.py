@@ -15,7 +15,9 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 0.1
+# alpha_k = 0.1
+alpha_k = 1
+
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
 
