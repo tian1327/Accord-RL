@@ -15,7 +15,7 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 1
+alpha_k = 0.1
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
 
@@ -95,8 +95,8 @@ for sim in range(NUMBER_SIMULATIONS):
     cons = []
     first_infeasible = True
     found_optimal = False
-    for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
-    # for episode in range(NUMBER_EPISODES):
+    # for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
+    for episode in range(NUMBER_EPISODES):
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
@@ -156,8 +156,8 @@ for sim in range(NUMBER_SIMULATIONS):
         # if episode > K0 and episode % 100 == 0:
         # if episode > K0:
 
-        # print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
-        #       episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
+              episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
@@ -207,9 +207,9 @@ for sim in range(NUMBER_SIMULATIONS):
             s = next_state
 
         # dump results out every 50000 episodes
-        if episode != 0 and episode%500== 0:
+        if episode != 0 and episode%100== 0:
 
-            filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()

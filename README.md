@@ -16,4 +16,6 @@ Safe RL for Healthcare
    * Learns the objective regrets, and constraint regrets of the learned policy
    * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`
 
-4. Run `python plot.py` to plot the `Objective Regret` and `Constraint Regret` 
+4. Run `python plot.py` to plot the `Objective Regret` and `Constraint Regret`
+   * run `python plot.py 3000` to specify the plot the first 3000 episodes
+   * plots are in `output/` folder
