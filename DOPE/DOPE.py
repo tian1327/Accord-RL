@@ -22,6 +22,13 @@ RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
+# remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
+old_filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
+if os.path.exists(old_filename):
+    os.remove(old_filename)
+    print("Removed old file: ", old_filename)
+
+
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
     [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, 
