@@ -31,7 +31,11 @@ class utils:
         self.Total_emp_cost = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
-                
+        
+        self.alpha_p = 1.0
+        self.alpha_r = 0.1
+        self.alpha_c = 1.0
+
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         self.beta_prob = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -101,15 +105,15 @@ class utils:
         next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
 
         # use †he true reward and cost       
-        rew = self.R[s][a]
-        cost = self.C[s][a] # this is the SBP feedback, not the deviation 
+        # rew = self.R[s][a]
+        # cost = self.C[s][a] # this is the SBP feedback, not the deviation 
 
         # add some noise to the reward and cost
-        # rew = self.R[s][a] + np.random.normal(0, 0.1)
-        # cost = self.C[s][a] + np.random.normal(0, 5) 
+        rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
+        cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+        # cost = max(0, 110-SBP_feedback) + max(0, SBP_feedback-125) # the cost is the deviation
 
-
-        return next_state,rew, cost
+        return next_state, rew, cost
 
     def update_mu(self, init_state):
         self.mu = np.zeros(self.N_STATES)
@@ -296,9 +300,9 @@ class utils:
 
         print("\nComputing optimal policy with constrained LP solver ...")
 
-        opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS)) #[s,h,a]
+        opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS)) #[s, h, a]
         opt_prob = p.LpProblem("OPT_LP_problem",p.LpMinimize) # minimize the CVRisk
-        opt_q = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS)) #[h,s,a]
+        opt_q = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS)) #[h, s, a]
                                                                                   
         # create problem variables
         q_keys = [(h, s, a) for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]
@@ -406,11 +410,13 @@ class utils:
         # lower bound is 0, because the occupancy measure is non-negative, constraint (18e) in the paper
             
         r_k = {}
+        c_k = {}
         c_k1 = {}
         c_k2 = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
+            c_k[s] = np.zeros(l)
             c_k1[s] = np.zeros(l)
             c_k2[s] = np.zeros(l)
 
@@ -420,12 +426,14 @@ class utils:
                 # c_k2[s][a] = self.C_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
 
                 # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
-                r_k[s][a] = max(0, self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a])
+                r_k[s][a] = max(0, self.R_hat[s][a] - self.alpha_r * self.sbp_cvdrisk_confidence[s][a])
                 # r_k[s][a] = max(0, self.R_hat[s][a])
                 # r_k[s][a] = self.R_hat[s][a]
 
-                c_k1[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
-                c_k2[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a]
+                c_k[s][a] = max(0, 110-(self.C_hat[s][a] - self.alpha_c * self.sbp_cvdrisk_confidence[s][a])) + max(0, (self.C_hat[s][a] + self.alpha_c * self.sbp_cvdrisk_confidence[s][a]) - 125)
+
+                # c_k1[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
+                # c_k2[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a]
 
                 # try without adding confidence bound
                 # r_k[s][a] = self.R_hat[s][a]
@@ -447,18 +455,18 @@ class utils:
                                                            for s_1 in self.Psparse[s][a]])
 
         # Constraints equation 18(b)                                  
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(c_k1[s][a]), 0) + 
-                                               max(c_k2[s][a] - 125, 0)) 
-                                            for h in range(self.EPISODE_LENGTH) 
-                                            for s in range(self.N_STATES) 
-                                            for a in self.ACTIONS[s] 
-                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
-
-        # opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c_k1[s][a]) 
+        # opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(c_k1[s][a]), 0) + 
+        #                                        max(c_k2[s][a] - 125, 0)) 
         #                                     for h in range(self.EPISODE_LENGTH) 
         #                                     for s in range(self.N_STATES) 
         #                                     for a in self.ACTIONS[s] 
         #                                     for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
+
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c_k[s][a]) 
+                                            for h in range(self.EPISODE_LENGTH) 
+                                            for s in range(self.N_STATES) 
+                                            for a in self.ACTIONS[s] 
+                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
         
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -482,11 +490,11 @@ class utils:
             for s in range(self.N_STATES):
                 for a in self.ACTIONS[s]:
                     for s_1 in self.Psparse[s][a]:
-                        opt_prob += z[(h,s,a,s_1)] - (self.P[s][a][s_1] + 0.01 ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        opt_prob += -z[(h,s,a,s_1)] + (self.P[s][a][s_1] - 0.01 )*  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                        
+                        # opt_prob += z[(h,s,a,s_1)] - (self.P[s][a][s_1] + 0.01 ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                        # opt_prob += -z[(h,s,a,s_1)] + (self.P[s][a][s_1] - 0.01 )*  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                        
 
-                        # opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        # opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
+                        opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                        opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
 
                         # opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
                         # opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] )* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)

@@ -15,7 +15,7 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha = 0.001
+alpha_k = 1
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
 
@@ -46,7 +46,7 @@ print("N_STATES =", N_STATES)
 print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
-K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
+K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
 # K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
 
 # # what if assign uniform P R and C
@@ -55,7 +55,7 @@ K0 = alpha * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # 
 # C = np.ones((N_STATES, N_ACTIONS)) * 5
 
 print()
-print("alpha =", alpha)
+print("alpha_k =", alpha_k)
 print("K0 =", K0)
 print("number of episodes =", NUMBER_EPISODES)
 assert K0 < NUMBER_EPISODES, "K0 is greater than the number of episodes"
@@ -95,8 +95,8 @@ for sim in range(NUMBER_SIMULATIONS):
     cons = []
     first_infeasible = True
     found_optimal = False
-    # for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
-    for episode in range(NUMBER_EPISODES): # loop for episodes
+    for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
+    # for episode in range(NUMBER_EPISODES):
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
@@ -155,8 +155,9 @@ for sim in range(NUMBER_SIMULATIONS):
         # print episode, objective regret, constraint regret, and the number of infeasibilities,
         # if episode > K0 and episode % 100 == 0:
         # if episode > K0:
-        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
-              episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+
+        # print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
+        #       episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
@@ -183,9 +184,9 @@ for sim in range(NUMBER_SIMULATIONS):
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             
-            if sum(prob) != 1:
-               print(s, h)
-               print(prob)
+            # if sum(prob) != 1:
+            #    print(s, h)
+            #    print(prob)
             
             # # check if prob has any negative values
             # for i in range(len(prob)):
@@ -206,7 +207,7 @@ for sim in range(NUMBER_SIMULATIONS):
             s = next_state
 
         # dump results out every 50000 episodes
-        if episode != 0 and episode%50000== 0:
+        if episode != 0 and episode%500== 0:
 
             filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
