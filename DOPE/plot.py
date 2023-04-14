@@ -62,7 +62,7 @@ ax.patch.set_alpha(0.4)
 plt.locator_params(axis='y', nbins=6)
 plt.locator_params(axis='x', nbins=10)
 
-plt.plot(x_o, obj_opsrl_mean[::L], label = 'DOPE', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=60)
+plt.plot(x_o, obj_opsrl_mean[::L], label = 'DOPE', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=50)
 # plt.fill_between(x_o, obj_opsrl_mean[::L] - obj_opsrl_std[::L] ,obj_opsrl_mean[::L] + obj_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
 plt.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 plt.grid()
@@ -99,7 +99,7 @@ ax = plt.gca()
 ax.patch.set_facecolor("lightsteelblue")
 ax.patch.set_alpha(0.4)
 
-plt.plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'DOPE', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=60)
+plt.plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'DOPE', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=50)
 # plt.fill_between(x_o, con_opsrl_mean[::L] - con_opsrl_std[::L] ,con_opsrl_mean[::L] + con_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
 
 # ax.set_ylim([-0.1e3, 8.5e3])

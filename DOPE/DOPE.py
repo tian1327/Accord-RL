@@ -16,7 +16,7 @@ start_time = time.time()
 # control parameters
 NUMBER_EPISODES = 1e6
 # alpha_k = 0.1
-alpha_k = 1
+alpha_k = 0.01
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -216,7 +216,7 @@ for sim in range(NUMBER_SIMULATIONS):
             s = next_state
 
         # dump results out every 50000 episodes
-        if episode != 0 and episode%100== 0:
+        if episode != 0 and episode%1000== 0:
 
             filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
