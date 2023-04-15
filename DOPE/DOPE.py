@@ -16,7 +16,7 @@ start_time = time.time()
 # control parameters
 NUMBER_EPISODES = 1e6
 # alpha_k = 0.1
-alpha_k = 0.01
+alpha_k = 1
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -179,16 +179,16 @@ for sim in range(NUMBER_SIMULATIONS):
                 ep_emp_cost[s][a] = 0        
         
         # s = 0 # initial state is always fixed to 0 +++++
-        s = INIT_STATE_INDEX # fixed to the most frequently seen initial state in the dataset
+        # s = INIT_STATE_INDEX # fixed to the most frequently seen initial state in the dataset
 
         # # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        # s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
-        # s = state_code_to_index[s_code[0]]
+        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
+        s = state_code_to_index[s_code[0]]
         # # print('s = ', s)
         # # print('s_idx = ', s_idx)
 
-        # # update self.mu
-        # util_methods.update_mu(s)
+        # update self.mu
+        util_methods.update_mu(s)
 
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
