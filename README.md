@@ -22,5 +22,5 @@ To export current environment: `conda env export > environment.yml`
    * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`
 
 4. Run `python plot.py` to plot the `Objective Regret` and `Constraint Regret`
-   * run `python plot.py 3000` to specify the plot the first 3000 episodes
+   * run `python plot.py 40000` to specify the plot the first 3000 episodes
    * plots are in `output/` folder
