@@ -24,3 +24,11 @@ To export current environment: `conda env export > environment.yml`
 4. Run `python plot.py` to plot the `Objective Regret` and `Constraint Regret`
    * run `python plot.py 40000` to specify the plot the first 3000 episodes
    * plots are in `output/` folder
+
+
+#### BPClass-Contextual
+
+1. Train true model for P, R, C using all data
+   * P is estimated the same way (empirical estimates) as DOPE
+   * R / CVDRisk: logistic regression with (context_vector, state, action)
+   * C / SBP: linear regression with (context_vector, state, action)
