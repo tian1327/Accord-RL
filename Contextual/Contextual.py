@@ -99,16 +99,20 @@ for sim in range(NUMBER_SIMULATIONS):
 
     objs = [] # objective regret for current run
     cons = []
+    R_est_err = []
+    C_est_err = []
+
     first_infeasible = True
     found_optimal = False
 
-    global pi_b_prev, val_b_prev, cost_b_prev, q_b_prev
-    pi_b_prev = None
-    val_b_prev = None
-    cost_b_prev = None
-    q_b_prev = None
+    # global pi_b_prev, val_b_prev, cost_b_prev, q_b_prev
+    # pi_b_prev = None
+    # val_b_prev = None
+    # cost_b_prev = None
+    # q_b_prev = None
 
-    for episode in range(NUMBER_EPISODES):
+    episode = 0
+    while episode < NUMBER_EPISODES:
 
         # sample a patient from CONTEXT_VECTOR_dict
         patient = np.random.choice(list(CONTEXT_VECTOR_dict.keys()), 1, replace = True)[0]
@@ -133,24 +137,27 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.update_CONSTRAINT(CONSTRAINT) # reset the C to the original value
 
         util_methods.update_episode(episode) # update the episode number for the utility methods
-
+        
         # for some cases the baseline policy maynot be feasible, in this case, we use the previous feasible baseline policy
         if status == 'Infeasible':
-            print("Baseline policy is infeasible")
-            pi_b = pi_b_prev
-            val_b = val_b_prev
-            cost_b = cost_b_prev
-            q_b = q_b_prev
+            continue # simply skip this patient
+
+            # print("Baseline policy is infeasible")
+            # pi_b = pi_b_prev
+            # val_b = val_b_prev
+            # cost_b = cost_b_prev
+            # q_b = q_b_prev
 
             # print('pi_k =', pi_k)
             # print('pi_b_prev =', pi_b_prev)
 
-        else: # record the current feasible baseline policy
+        # else: # record the current feasible baseline policy
+
             # print("Baseline policy is feasible, record the current baseline policy")
-            pi_b_prev = pi_b
-            val_b_prev = val_b
-            cost_b_prev = cost_b
-            q_b_prev = q_b
+            # pi_b_prev = pi_b
+            # val_b_prev = val_b
+            # cost_b_prev = cost_b
+            # q_b_prev = q_b
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
@@ -161,7 +168,7 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
-            # util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
+            R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
             # util_methods.compute_confidence_intervals(L, L_prime, 1) 
             dtime = 0
 
@@ -169,7 +176,7 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
-            util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
+            R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
             util_methods.compute_confidence_intervals(L, L_prime, 1) 
 
             t1 = time.time()
@@ -194,6 +201,9 @@ for sim in range(NUMBER_SIMULATIONS):
                     print('k0 should be at least', episode)
                     found_optimal = True
         
+        R_est_err.append(R_est_error)
+        C_est_err.append(C_est_error)
+
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
             ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
@@ -253,11 +263,11 @@ for sim in range(NUMBER_SIMULATIONS):
             s = next_state
 
         # dump results out every 50000 episodes
-        if episode != 0 and episode%1000== 0:
+        if episode != 0 and episode%200== 0:
 
             filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
             objs = []
             cons = []
@@ -265,8 +275,10 @@ for sim in range(NUMBER_SIMULATIONS):
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
+        
+        episode += 1
         
 # take average/std over multiple simulation runs
 ObjRegret_mean = np.mean(ObjRegret2, axis = 0) 

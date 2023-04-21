@@ -14,7 +14,7 @@ NUMBER_EPISODES_o = 5000
 if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[1]) + 1
 
-L = 500 # marker point interval
+L = 1 # marker point interval
 
 
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))

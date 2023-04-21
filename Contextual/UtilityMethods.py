@@ -16,6 +16,7 @@ class utils:
 
         self.P = P.copy()
         self.R = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.R_obs = np.zeros((self.N_STATES,self.N_ACTIONS)) # observed CVDRisk with noises added
         self.C = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_model = R_model
         self.C_model = C_model
@@ -145,6 +146,10 @@ class utils:
                 # print('R_input: ', R_input, 'y_pred: ', y_pred)
                 reward = 1/(1+np.exp(-y_pred))
                 self.R[s][a] = reward
+
+                obs_reward = 1/(1+np.exp(-y_pred + np.random.normal(0, 0.05))) # with noises added
+                self.R_obs[s][a] = obs_reward
+
                 C_input = np.concatenate((context_vec, np.array(action_code_list)), axis=0)
                 self.C[s][a] = self.C_model.predict(C_input.reshape(1, -1))
 
@@ -212,8 +217,7 @@ class utils:
         y_pred = cvd_regr.predict(x_train)
         y_pred_transformed = 1/(1+np.exp(-y_pred))
         mse = mean_squared_error(y_train, y_pred_transformed)
-        rmse = np.sqrt(mse)
-        print('CVDRisk RMSE = ', rmse)
+        cvd_rmse = np.sqrt(mse)        
         self.cvdrisk_regr = cvd_regr
 
         #---------run linear regression to estimate the deviation from the SBP_feedback, get \theta c
@@ -227,8 +231,8 @@ class utils:
         sbp_regr.fit(x_train, y_train)
         y_pred = sbp_regr.predict(x_train)
         mse = mean_squared_error(y_train, y_pred)
-        rmse = np.sqrt(mse)
-        print('SBP RMSE = ', rmse)
+        sbp_rmse = np.sqrt(mse)
+        print('SBP RMSE = ', sbp_rmse)
         self.sbp_regr = sbp_regr
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
@@ -255,7 +259,37 @@ class utils:
                 # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
                 # stop        
 
+        #------------ calculate the l2norm of the difference between the weights of true model and estimated model
+        
+        # get the weights of self.R_model, which is a linear regression model
+        R_model_weights = self.R_model.coef_
+        R_model_intercept = self.R_model.intercept_
+        R_model_wt_vec = np.concatenate((R_model_weights, R_model_intercept), axis=0)
+        
+        # get the weights of self.cvdrisk_regr, which is a linear regression model
+        R_hat_weights = self.cvdrisk_regr.coef_
+        R_hat_intercept = self.cvdrisk_regr.intercept_
+        R_hat_wt_vec = np.concatenate((R_hat_weights, R_hat_intercept), axis=0)
 
+        # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
+        R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
+
+        # get the weights of self.C_model, which is a linear regression model
+        C_model_weights = self.C_model.coef_
+        C_model_intercept = self.C_model.intercept_
+        C_model_wt_vec = np.concatenate((C_model_weights, C_model_intercept), axis=0)
+
+        # get the weights of self.sbp_regr, which is a linear regression model
+        C_hat_weights = self.sbp_regr.coef_
+        C_hat_intercept = self.sbp_regr.intercept_
+        C_hat_wt_vec = np.concatenate((C_hat_weights, C_hat_intercept), axis=0)
+
+        # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
+        C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
+
+        print('cvd_rmse = ', cvd_rmse, 'sbp_rmse = ', sbp_rmse, 'R_est_error = ', R_est_error, 'C_est_error = ', C_est_error)
+
+        return R_est_error, C_est_error
 
     def update_CONSTRAINT(self, new_CONSTRAINT):
         self.CONSTRAINT = new_CONSTRAINT
@@ -272,11 +306,11 @@ class utils:
         # cost = self.C[s][a] # this is the SBP feedback, not the deviation 
 
         # add some noise to the reward and cost
-        rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
-        rew = max(0.32, rew) # the max CVDRisk in the dataset is 0.32
-        rew = min(0.22, rew) # the min CVDRisk in the dataset is 0.22
+        # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
+        rew = self.R_obs[s][a]
+
         cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
-        cost = max(0, cost)
+        # cost = max(0, cost)
         # cost = max(0, 110-SBP_feedback) + max(0, SBP_feedback-125) # the cost is the deviation
 
         return next_state, rew, cost
