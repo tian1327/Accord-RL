@@ -32,3 +32,6 @@ To export current environment: `conda env export > environment.yml`
    * P is estimated the same way (empirical estimates) as DOPE
    * R / CVDRisk: logistic regression with (context_vector, state, action)
    * C / SBP: linear regression with (context_vector, state, action)
+   * Get the estimators by runninng `train_feedback_estimators_v2.ipynb`
+
+2. 

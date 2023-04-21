@@ -56,12 +56,6 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-# K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
-
-# # what if assign uniform P R and C
-# P = np.ones((N_STATES, N_ACTIONS, N_STATES)) / N_STATES
-# R = np.ones((N_STATES, N_ACTIONS)) * 0.2
-# C = np.ones((N_STATES, N_ACTIONS)) * 5
 
 print()
 print("alpha_k =", alpha_k)
@@ -160,10 +154,6 @@ for sim in range(NUMBER_SIMULATIONS):
             cons.append(ConRegret2[sim, episode])
             if cost_k[0, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
-        
-        # print episode, objective regret, constraint regret, and the number of infeasibilities,
-        # if episode > K0 and episode % 100 == 0:
-        # if episode > K0:
 
         print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
               episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))

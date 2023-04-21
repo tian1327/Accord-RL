@@ -11,12 +11,21 @@ import sys
 import random
 from tqdm import tqdm
 
+def discretize_sbp(sbp):
+    if sbp < 120:
+        return 0
+    elif sbp < 140:
+        return 1
+    else:
+        return 2
+
+
 start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
 # alpha_k = 0.1
-alpha_k = 1
+alpha_k = 1e4
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -30,24 +39,20 @@ if os.path.exists(old_filename):
     os.remove(old_filename)
     print("Removed old file: ", old_filename)
 
-
 # Initialize:
-with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, 
-     N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
+with open('output/model_contextual.pkl', 'rb') as f:
+    [P, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, state_index_to_code, action_index_to_code,
+    CONSTRAINT, Cb, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
-with  open('output/solution.pkl', 'rb') as f:
-    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
-
-with open('output/base.pkl', 'rb') as f:
-    [pi_b, val_b, cost_b, q_b] = pickle.load(f)
+# load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
+R_model = pickle.load(open('output/CVDRisk_estimator_BP.pkl', 'rb'))
+C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-# CONSTRAINT = 10000
-
-Cb = cost_b[0, 0]
+# Cb = cost_b[0, 0]
+Cb = Cb
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
@@ -55,13 +60,7 @@ print("N_STATES =", N_STATES)
 print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
-K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-# K0 = alpha * (EPISODE_LENGTH/(CONSTRAINT - Cb))**2  # equation in Page 9 of the word document 
-
-# # what if assign uniform P R and C
-# P = np.ones((N_STATES, N_ACTIONS, N_STATES)) / N_STATES
-# R = np.ones((N_STATES, N_ACTIONS)) * 0.2
-# C = np.ones((N_STATES, N_ACTIONS)) * 5
+K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
 
 print()
 print("alpha_k =", alpha_k)
@@ -78,51 +77,100 @@ ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 
 L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
-L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk
+L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk, not used in Contextual algorithm
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
 print("L =", L)
 print("L_prime =", L_prime)
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
+    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb) # set the utility methods for each run
 
+    # for empirical estimate of transition probabilities P_hat
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
-    ep_emp_reward = {} # initialize the empirical rewards and costs for each run
-    ep_emp_cost = {}
-    for s in range(N_STATES):
-        ep_emp_reward[s] = {}
-        ep_emp_cost[s] = {}
-        for a in range(N_ACTIONS):
-            ep_emp_reward[s][a] = 0
-            ep_emp_cost[s][a] = 0
 
+    # for logistic regression of CVDRisk_feedback and linear regression SBP_feedback
+    ep_sbp_discrete = [] # record the SBP feedback discrete for each step in a episode
+    ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+    ep_action_code = [] # record the action code for each step in a episode
+    ep_cvdrisk = [] # record the CVDRisk for each step in a episode
 
     objs = [] # objective regret for current run
     cons = []
     first_infeasible = True
     found_optimal = False
-    # for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
+
+    global pi_b_prev, val_b_prev, cost_b_prev, q_b_prev
+    pi_b_prev = None
+    val_b_prev = None
+    cost_b_prev = None
+    q_b_prev = None
+
     for episode in range(NUMBER_EPISODES):
+
+        # sample a patient from CONTEXT_VECTOR_dict
+        patient = np.random.choice(list(CONTEXT_VECTOR_dict.keys()), 1, replace = True)[0]
+        context_vec = CONTEXT_VECTOR_dict[patient][0]
+        sbp_discrete_init = CONTEXT_VECTOR_dict[patient][1]
+        # print('len(context_vec) =', len(context_vec))
+        util_methods.set_context(context_vec) # set the context vector for the current episode
+
+        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
+        s_idx_init = state_code_to_index[s_code]
+        util_methods.update_mu(s_idx_init)
+
+        # calculate the R and C based on the true R and C models
+        util_methods.calculate_true_R_C(context_vec)
+
+        # get the optimal and baseline policy for current patient with context_vec, and initial state s_idx
+        opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
+
+        util_methods.update_CONSTRAINT(Cb) # set the C to Cb for calculating the baseline policy
+        pi_b, val_b, cost_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
+        util_methods.update_CONSTRAINT(CONSTRAINT) # reset the C to the original value
+
+        util_methods.update_episode(episode) # update the episode number for the utility methods
+
+        # for some cases the baseline policy maynot be feasible, in this case, we use the previous feasible baseline policy
+        if status == 'Infeasible':
+            print("Baseline policy is infeasible")
+            pi_b = pi_b_prev
+            val_b = val_b_prev
+            cost_b = cost_b_prev
+            q_b = q_b_prev
+
+            # print('pi_k =', pi_k)
+            # print('pi_b_prev =', pi_b_prev)
+
+        else: # record the current feasible baseline policy
+            # print("Baseline policy is feasible, record the current baseline policy")
+            pi_b_prev = pi_b
+            val_b_prev = val_b
+            cost_b_prev = cost_b
+            q_b_prev = q_b
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
             val_k = val_b
             cost_k = cost_b
             q_k = q_b
+
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
-            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
+            util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
+            # util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
+            # util_methods.compute_confidence_intervals(L, L_prime, 1) 
             dtime = 0
 
-        else: # use the DOPE policy when the episode is greater than K0
+        else: # when the episode is greater than K0, solve the extended LP to get the policy
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
-            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals(L, L_prime, 1)
+            util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
+            util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
+            util_methods.compute_confidence_intervals(L, L_prime, 1) 
 
             t1 = time.time()
             # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
@@ -147,49 +195,33 @@ for sim in range(NUMBER_SIMULATIONS):
                     found_optimal = True
         
         if episode == 0:
-            ObjRegret2[sim, episode] = abs(val_k[0, 0] - opt_value_LP_con[0, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
-            ConRegret2[sim, episode] = max(0, cost_k[0, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
+            ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
+            ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[0, 0] > CONSTRAINT:
+            if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = 1
         else:
-            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[0, 0] - opt_value_LP_con[0, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
-            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[0, 0] - CONSTRAINT) # cumulative sum of constraint regret
+            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
+            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[0, 0] > CONSTRAINT:
+            if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
-        
-        # print episode, objective regret, constraint regret, and the number of infeasibilities,
-        # if episode > K0 and episode % 100 == 0:
-        # if episode > K0:
 
-        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
-              episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+        print('Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
+              episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
         ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
-        for s in range(N_STATES):
-            ep_emp_reward[s] = {}
-            ep_emp_cost[s] = {}
-            for a in range(N_ACTIONS):
-                ep_emp_reward[s][a] = 0
-                ep_emp_cost[s][a] = 0        
+        ep_sbp_discrete = [] # record the SBP for each step in a episode, for the current timestep
+        ep_sbp_discrete.append(sbp_discrete_init)
+        ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+        ep_action_code = [] # record the action code for each step in a episode
+        ep_cvdrisk = [] # record the CVDRisk for each step in a episode    
         
-        # s = 0 # initial state is always fixed to 0 +++++
-        # s = INIT_STATE_INDEX # fixed to the most frequently seen initial state in the dataset
-
-        # # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)
-        s = state_code_to_index[s_code[0]]
-        # # print('s = ', s)
-        # # print('s_idx = ', s_idx)
-
-        # update self.mu
-        util_methods.update_mu(s)
-
+        s = s_idx_init # set the state to the initial state
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             
@@ -209,10 +241,15 @@ for sim in range(NUMBER_SIMULATIONS):
 
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
+            
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
-            ep_emp_reward[s][a] += rew
-            ep_emp_cost[s][a] += cost # this is the SBP feedback
+            ep_sbp_cont.append(cost) # this is the SBP feedback continuous
+            if h != EPISODE_LENGTH - 1:       
+                ep_sbp_discrete.append(discretize_sbp(cost))
+            ep_action_code.append(action_index_to_code[a]) 
+            ep_cvdrisk.append(rew)
+
             s = next_state
 
         # dump results out every 50000 episodes
@@ -238,49 +275,6 @@ ObjRegret_std = np.std(ObjRegret2, axis = 0)
 ConRegret_std = np.std(ConRegret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'contextual_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)
-
-# print(NUMBER_INFEASIBILITIES)
-# print(util_methods.NUMBER_OF_OCCURANCES[0])
-
-
-
-"""
-print("\nPlotting the results ...")
-
-title = 'OPSRL' + str(RUN_NUMBER)
-plt.figure()
-plt.plot(range(NUMBER_EPISODES), ObjRegret_mean)
-plt.fill_between(range(NUMBER_EPISODES), ObjRegret_mean - ObjRegret_std, ObjRegret_mean + ObjRegret_std, alpha = 0.5)
-plt.grid()
-plt.xlabel('Episodes')
-plt.ylabel('Objective Regret')
-plt.title(title)
-plt.savefig(title + '_ObjectiveRegret.png')
-plt.show()
-
-time = np.arange(1, NUMBER_EPISODES+1)
-squareroot = [int(b) / int(m) for b,m in zip(ObjRegret_mean, np.sqrt(time))]
-
-plt.figure()
-plt.plot(range(NUMBER_EPISODES),squareroot)
-#plt.fill_between(range(NUMBER_EPISODES), ObjRegret_mean - ObjRegret_std, ObjRegret_mean + ObjRegret_std, alpha = 0.5)
-plt.grid()
-plt.xlabel('Episodes')
-plt.ylabel('Objective Regret square root curve')
-plt.title(title)
-plt.savefig(title + '_ObjectiveRegretSQRT.png')
-plt.show()
-
-plt.figure()
-plt.plot(range(NUMBER_EPISODES), ConRegret_mean)
-plt.fill_between(range(NUMBER_EPISODES), ConRegret_mean - ConRegret_std, ConRegret_mean + ConRegret_std, alpha = 0.5)
-plt.grid()
-plt.xlabel('Episodes')
-plt.ylabel('Constraint Regret')
-plt.title(title)
-plt.savefig(title + '_ConstraintRegret.png')
-plt.show()
-"""
