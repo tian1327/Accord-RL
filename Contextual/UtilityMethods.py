@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
 
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C_model, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
+    def __init__(self, eps, delta, M, P, R_model, C_model, CONNTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
 
         self.EPISODE_LENGTH = EPISODE_LENGTH
         self.N_STATES = N_STATES
@@ -36,9 +36,11 @@ class utils:
         self.episode = 0
         self.C1 = 1.0
         self.C2 = 1.0
-        self.C3 = 1.0 
-        self.U_sbp = None # the design matrix for SBP raduis
-        self.U_cvdrisk = None # the design matrix for CVD risk radius
+        self.C3 = 1.0
+        self.CONNTEXT_VEC_LENGTH = CONNTEXT_VEC_LENGTH
+        self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
+        self.U_sbp =  np.zeros((CONNTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONNTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
+        self.U_cvd = np.zeros((CONNTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH, CONNTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, +1 for the sbp_discrete
 
         # print('Actions: ', ACTIONS)
         # print('self.ACTIONS: ', self.ACTIONS)
@@ -195,12 +197,35 @@ class utils:
             self.cvdrisk = np.concatenate((self.cvdrisk, cvd), axis=0)
             self.A = np.concatenate((self.A, action_matrix), axis=0)
 
+    def make_x_a_vector(self, context_vec, current_sbp_discrete, action_idx):
+
+        # reshape the context vector to a column vector
+        context_vec = context_vec.reshape(-1, 1)
+        # print("context_vec.shape =", context_vec.shape)
+
+        # transform the action to a column vector
+        action_code = self.action_index_to_code[action_idx]
+        action_code_list = [int(x) for x in list(action_code)]
+        action_vec = np.array(action_code_list).reshape(-1, 1)
+        # print('action_code =', action_code)
+        # print('action_vec =', action_vec)
+        # print("action_vec.shape =", action_vec.shape)
+
+        # stack the context vector and action vector to form the design vector
+        sbp_xa_vec = np.vstack((context_vec, action_vec))
+        # print("sbp_xa_vec.shape =", sbp_xa_vec.shape)
+
+        sbp_dis_vec = np.array(current_sbp_discrete).reshape(-1, 1)
+        cvd_xsa_vec = np.vstack((context_vec, sbp_dis_vec, action_vec))
+        # print("cvd_xsa_vec.shape =", cvd_xsa_vec.shape)
+
+        return sbp_xa_vec, cvd_xsa_vec
 
     def run_regression_rewards_costs(self, episode):
 
         # do nothing if no history yet
         if episode == 0:
-            return 
+            return (0, 0)
         
         #---------run logistic regression to estimate the CVDRisk feedback, get \theta r
 
@@ -232,7 +257,7 @@ class utils:
         y_pred = sbp_regr.predict(x_train)
         mse = mean_squared_error(y_train, y_pred)
         sbp_rmse = np.sqrt(mse)
-        print('SBP RMSE = ', sbp_rmse)
+        # print('SBP RMSE = ', sbp_rmse)
         self.sbp_regr = sbp_regr
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
@@ -263,13 +288,15 @@ class utils:
         
         # get the weights of self.R_model, which is a linear regression model
         R_model_weights = self.R_model.coef_
+        # print('R_model_weights: ', R_model_weights)
         R_model_intercept = self.R_model.intercept_
-        R_model_wt_vec = np.concatenate((R_model_weights, R_model_intercept), axis=0)
+        # print('R_model_intercept: ', R_model_intercept)
+        R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
         
         # get the weights of self.cvdrisk_regr, which is a linear regression model
         R_hat_weights = self.cvdrisk_regr.coef_
         R_hat_intercept = self.cvdrisk_regr.intercept_
-        R_hat_wt_vec = np.concatenate((R_hat_weights, R_hat_intercept), axis=0)
+        R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
 
         # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
         R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
@@ -277,19 +304,48 @@ class utils:
         # get the weights of self.C_model, which is a linear regression model
         C_model_weights = self.C_model.coef_
         C_model_intercept = self.C_model.intercept_
-        C_model_wt_vec = np.concatenate((C_model_weights, C_model_intercept), axis=0)
+        C_model_wt_vec = np.array(C_model_weights + C_model_intercept)
 
         # get the weights of self.sbp_regr, which is a linear regression model
         C_hat_weights = self.sbp_regr.coef_
         C_hat_intercept = self.sbp_regr.intercept_
-        C_hat_wt_vec = np.concatenate((C_hat_weights, C_hat_intercept), axis=0)
+        C_hat_wt_vec = np.array(C_hat_weights + C_hat_intercept)
 
         # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
         C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
 
-        print('cvd_rmse = ', cvd_rmse, 'sbp_rmse = ', sbp_rmse, 'R_est_error = ', R_est_error, 'C_est_error = ', C_est_error)
+        print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))
 
-        return R_est_error, C_est_error
+        return (R_est_error, C_est_error)
+
+    def add_design_vector(self, sbp_xa_vec, cvd_xsa_vec):
+        
+        #------- for self.U_sbp
+        design_vector = sbp_xa_vec
+        # miltiply design_vector by its transpose
+        design_vector_transpose = np.transpose(design_vector)
+        product = np.matmul(design_vector, design_vector_transpose)
+        # print('product.shape: ', product.shape)
+        
+        # add the new product to the existing U_sbp
+        self.U_sbp = self.U_sbp + product
+        # print('self.U_sbp.shape: ', self.U_sbp.shape)
+
+        #------- for self.U_cvd, not doing here for each timestep, because we don't have estimated regression model for the first k0 episode
+        # instead we do this in the compute_confidence_interval function
+
+        # design_vector = cvd_xsa_vec
+        # design_vector_transpose = np.transpose(design_vector)
+        # product = np.matmul(design_vector, design_vector_transpose)
+
+        # # multiple the product with a numerical factor
+        # factor = self.cvdrisk_regr.predict(design_vector.reshape(1, -1))[0][0]
+        # print('factor: ', factor)
+        # product = product * factor**2 * (1-factor)**2
+
+        # self.U_cvd = self.U_cvd + product
+
+
 
     def update_CONSTRAINT(self, new_CONSTRAINT):
         self.CONSTRAINT = new_CONSTRAINT
@@ -328,8 +384,9 @@ class utils:
 
 
     # compute the confidence intervals beta for the transition probabilities
-    def compute_confidence_intervals(self, ep, L_prime, mode): 
+    def compute_confidence_intervals_2(self, ep, L_prime, mode): 
                                          # ep = L
+    
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 if self.NUMBER_OF_OCCURANCES[s][a] == 0:
@@ -340,27 +397,105 @@ class utils:
                 else:
                         
                     for s_1 in range(self.N_STATES):
-                        # if mode == 0:
-                        #     # DOPE policy, which equation? SBP, CVDRisk bound
-                        #     self.beta_prob[s][a,s_1] = min(np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
-                        #                                    ep/(max(self.NUMBER_OF_OCCURANCES[s][a],1)), ep/(max(np.sqrt(self.NUMBER_OF_OCCURANCES[s][a]),1)), 1)
                         
                         # if mode == 1:
-                            # equation (5) in the paper to calculate the confidence interval for P
-                            self.beta_prob[s][a,s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
-                                                            14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
-                            
-                            # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
+                        # equation (5) in the paper to calculate the confidence interval for P
+                        self.beta_prob[s][a,s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                            14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)                            
+                        # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
+
+                self.sbp_confidence[s][a] = 2
+                self.cvdrisk_confidence[s][a] = 0.05
+
+
+    # compute the confidence intervals beta for the transition probabilities
+    def compute_confidence_intervals(self, ep, L_prime, mode): 
+                                         # ep = L
+
+        # reset the self.U_cvd
+        self.U_cvd = np.zeros((self.CONNTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONNTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH))
+
+        # first we calculate self.U_cvd
+        for i in range(self.X.shape[0]):
+            x = self.X[i]
+            s = self.sbp_dis[i]
+            a = self.A[i]
+            xsa_vec = np.concatenate((x, s, a)).reshape(-1, 1)
+            # print('xsa_vec.shape: ', xsa_vec.shape)
+
+            prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
+            # print('prod.shape: ', prod.shape)
+
+            # compute the factor
+            y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0][0]
+            factor = 1/(1+np.exp(-y_pred))
+
+            # print('factor: ', factor)
+            u_cvd = prod * factor**2 * (1-factor)**2
+
+            self.U_cvd = self.U_cvd + u_cvd
+        
+        print('self.U_cvd.shape: ', self.U_cvd.shape)
+        print('self.U_cvd: ', self.U_cvd)
+
+        M_inverse = np.linalg.inv(self.U_cvd)
+        print('M_inverse.shape: ', M_inverse.shape)
+
+        # calculate the end_term 4 *hr/sqrt(t)
+        hr = self.C2* np.sqrt(9+1+4)
+        end_term = 4 * hr / np.sqrt(self.episode)
+        print('end_term: ', end_term) # 4
+    
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                if self.NUMBER_OF_OCCURANCES[s][a] == 0:
+                    self.beta_prob[s][a, :] = np.ones(self.N_STATES)
+                    # self.beta_prob_T[s][a] = np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a],1)) 
+                    # not sure what is beta_prob_T used for? Used in other algorithms
+
+                else:
                         
-                # self.beta_prob_1[s][a] = max(self.beta_prob[s][a, :])
-                # self.beta_prob_2[s][a] = sum(self.beta_prob[s][a, :])
+                    for s_1 in range(self.N_STATES):
+                        
+                        # if mode == 1:
+                        # equation (5) in the paper to calculate the confidence interval for P
+                        self.beta_prob[s][a,s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                            14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)                            
+                        # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
 
-                # self.sbp_cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1)
-                # self.sbp_cvdrisk_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
-                # print('self.sbp_cvdrisk_confidence[s][a]: ', self.sbp_cvdrisk_confidence[s][a])
+                # self.sbp_confidence[s][a] = 0
+                # self.cvdrisk_confidence[s][a] = 0
 
-                self.sbp_confidence[s][a] = 0
-                self.cvdrisk_confidence[s][a] = 0
+                #---------- compute the confidence intervals for the SBP_feedback
+                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, self.state_index_to_code[s], a)
+
+                xa_transpose = np.transpose(xa_vec)
+
+                print('self.U_sbp.shape: ', self.U_sbp.shape)
+                print('self.U_sbp: ', self.U_sbp)
+                # get the inverser matrix of self.U_sbp
+                M_inverse = np.linalg.inv(self.U_sbp)
+                
+                prod = np.matmul(xa_transpose, M_inverse)
+                prod = np.matmul(prod, xa_vec)
+
+                print('prod: ', prod, 'sqrt(prod): ', self.np.sqrt(prod))
+                self.sbp_confidence[s][a] = self.C1 * np.log(self.episode) * self.np.sqrt(prod)
+                print('self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a])
+
+                #---------- compute the confidence intervals for the CVDRisk_feedback
+                y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0][0]
+                factor = 1/(1+np.exp(-y_pred))
+                print('factor: ', factor)
+                xsa = xsa_vec * factor**2 * (1-factor)**2
+                xsa_transpose = np.transpose(xsa)
+                M_inverse = np.linalg.inv(self.U_cvd)
+
+                prod = np.matmul(xsa_transpose, M_inverse)
+                prod = np.matmul(prod, xsa_vec)
+                print('prod: ', prod, 'sqrt(prod): ', self.np.sqrt(prod))
+                self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * self.np.sqrt(prod) + end_term
+                print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
 
 
     # update the empirical/estimated model based on the counters every episode

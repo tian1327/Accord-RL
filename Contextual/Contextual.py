@@ -19,12 +19,10 @@ def discretize_sbp(sbp):
     else:
         return 2
 
-
 start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-# alpha_k = 0.1
 alpha_k = 1e4
 
 NUMBER_SIMULATIONS = 1
@@ -41,7 +39,7 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model_contextual.pkl', 'rb') as f:
-    [P, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, state_index_to_code, action_index_to_code,
+    [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT, Cb, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 # load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
@@ -84,7 +82,7 @@ print("L_prime =", L_prime)
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
+    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb) # set the utility methods for each run
 
     # for empirical estimate of transition probabilities P_hat
@@ -140,6 +138,7 @@ for sim in range(NUMBER_SIMULATIONS):
         
         # for some cases the baseline policy maynot be feasible, in this case, we use the previous feasible baseline policy
         if status == 'Infeasible':
+            print("Baseline policy is infeasible, skip to the next patient")
             continue # simply skip this patient
 
             # print("Baseline policy is infeasible")
@@ -168,8 +167,9 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
-            R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            # util_methods.compute_confidence_intervals(L, L_prime, 1) 
+            # R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
+            # util_methods.compute_confidence_intervals(L, L_prime, 1)
+            R_est_error, C_est_error = 0, 0 
             dtime = 0
 
         else: # when the episode is greater than K0, solve the extended LP to get the policy
@@ -177,7 +177,8 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            util_methods.compute_confidence_intervals(L, L_prime, 1) 
+            # util_methods.compute_confidence_intervals(L, L_prime, 1)
+            util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             t1 = time.time()
             # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
@@ -251,12 +252,17 @@ for sim in range(NUMBER_SIMULATIONS):
 
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
-            
+            current_sbp_discrete = ep_sbp_discrete[h] # get the SBP for the current timestep
+            sbp_xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(context_vec, current_sbp_discrete, a)
+            sbp_fb_dis = discretize_sbp(cost)
+            util_methods.add_design_vector(sbp_xa_vec, cvd_xsa_vec)
+
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
             ep_sbp_cont.append(cost) # this is the SBP feedback continuous
             if h != EPISODE_LENGTH - 1:       
-                ep_sbp_discrete.append(discretize_sbp(cost))
+                ep_sbp_discrete.append(sbp_fb_dis)
+
             ep_action_code.append(action_index_to_code[a]) 
             ep_cvdrisk.append(rew)
 
@@ -271,6 +277,8 @@ for sim in range(NUMBER_SIMULATIONS):
             f.close()
             objs = []
             cons = []
+            R_est_err = []
+            C_est_err = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
