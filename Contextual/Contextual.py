@@ -23,7 +23,7 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 1e4
+alpha_k = 1e3
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -177,8 +177,8 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            # util_methods.compute_confidence_intervals(L, L_prime, 1)
-            util_methods.compute_confidence_intervals_2(L, L_prime, 1)
+            util_methods.compute_confidence_intervals(L, L_prime, 1)
+            # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             t1 = time.time()
             # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
@@ -253,6 +253,8 @@ for sim in range(NUMBER_SIMULATIONS):
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             current_sbp_discrete = ep_sbp_discrete[h] # get the SBP for the current timestep
+            # print('current_sbp_discrete = ', current_sbp_discrete)
+            # print('type(current_sbp_discrete) = ', type(current_sbp_discrete))
             sbp_xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(context_vec, current_sbp_discrete, a)
             sbp_fb_dis = discretize_sbp(cost)
             util_methods.add_design_vector(sbp_xa_vec, cvd_xsa_vec)

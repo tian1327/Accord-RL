@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
 
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C_model, CONNTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
+    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
 
         self.EPISODE_LENGTH = EPISODE_LENGTH
         self.N_STATES = N_STATES
@@ -34,13 +34,13 @@ class utils:
 
         # for connfidence bounds
         self.episode = 0
-        self.C1 = 1.0
-        self.C2 = 1.0
-        self.C3 = 1.0
-        self.CONNTEXT_VEC_LENGTH = CONNTEXT_VEC_LENGTH
+        self.C1 = 10.0
+        self.C2 = 0.02
+        self.C3 = 0.25
+        self.CONTEXT_VEC_LENGTH = CONTEXT_VEC_LENGTH
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
-        self.U_sbp =  np.zeros((CONNTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONNTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
-        self.U_cvd = np.zeros((CONNTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH, CONNTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, +1 for the sbp_discrete
+        self.U_sbp =  np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
+        self.U_cvd = np.zeros((CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, +1 for the sbp_discrete
 
         # print('Actions: ', ACTIONS)
         # print('self.ACTIONS: ', self.ACTIONS)
@@ -202,6 +202,7 @@ class utils:
         # reshape the context vector to a column vector
         context_vec = context_vec.reshape(-1, 1)
         # print("context_vec.shape =", context_vec.shape)
+        # print("context_vec =", context_vec)
 
         # transform the action to a column vector
         action_code = self.action_index_to_code[action_idx]
@@ -215,9 +216,22 @@ class utils:
         sbp_xa_vec = np.vstack((context_vec, action_vec))
         # print("sbp_xa_vec.shape =", sbp_xa_vec.shape)
 
+        # print('make_x_a_vector:')
+        # print('current_sb_discrete =', current_sbp_discrete)
+        # print('type(current_sb_discrete) =', type(current_sbp_discrete))
+
+        # transform the sbp_dis_vec into a vector
         sbp_dis_vec = np.array(current_sbp_discrete).reshape(-1, 1)
+        # sbp_dis_vec = np.array(current_sbp_discrete)
+
+        # print('context_vec= ', context_vec)
+        # print('sbp_dis_vec= ', sbp_dis_vec)
+        # print('action_vec= ', action_vec)
+
         cvd_xsa_vec = np.vstack((context_vec, sbp_dis_vec, action_vec))
+
         # print("cvd_xsa_vec.shape =", cvd_xsa_vec.shape)
+        # print("cvd_xsa_vec =", cvd_xsa_vec)
 
         return sbp_xa_vec, cvd_xsa_vec
 
@@ -413,7 +427,7 @@ class utils:
                                          # ep = L
 
         # reset the self.U_cvd
-        self.U_cvd = np.zeros((self.CONNTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONNTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH))
+        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH))
 
         # first we calculate self.U_cvd
         for i in range(self.X.shape[0]):
@@ -435,11 +449,14 @@ class utils:
 
             self.U_cvd = self.U_cvd + u_cvd
         
-        print('self.U_cvd.shape: ', self.U_cvd.shape)
-        print('self.U_cvd: ', self.U_cvd)
+        # print('self.U_cvd.shape: ', self.U_cvd.shape)
+        # print('self.U_cvd: ', self.U_cvd)
 
+        # add a identy matrix to self.U_cvd
+        self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)
+        # print('self.U_cvd: ', self.U_cvd)
         M_inverse = np.linalg.inv(self.U_cvd)
-        print('M_inverse.shape: ', M_inverse.shape)
+        # print('M_inverse.shape: ', M_inverse.shape)
 
         # calculate the end_term 4 *hr/sqrt(t)
         hr = self.C2* np.sqrt(9+1+4)
@@ -467,35 +484,50 @@ class utils:
                 # self.cvdrisk_confidence[s][a] = 0
 
                 #---------- compute the confidence intervals for the SBP_feedback
-                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, self.state_index_to_code[s], a)
+                state_vec = int(self.state_index_to_code[s]) #!!!!!! pay attention to the state vector
+                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, state_vec, a)
+                # print('xa_vec.shape: ', xa_vec.shape)
+                # print('xa_vec: ', xa_vec)
+                # print('xsa_vec.shape: ', xsa_vec.shape)
+                # print('xsa_vec: ', xsa_vec)
 
                 xa_transpose = np.transpose(xa_vec)
 
-                print('self.U_sbp.shape: ', self.U_sbp.shape)
-                print('self.U_sbp: ', self.U_sbp)
+                # print('self.U_sbp.shape: ', self.U_sbp.shape)
+                # print('self.U_sbp: ', self.U_sbp)
+                # add a identy matrix to self.U_sbp
+                self.U_sbp = self.U_sbp + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
+
                 # get the inverser matrix of self.U_sbp
                 M_inverse = np.linalg.inv(self.U_sbp)
                 
                 prod = np.matmul(xa_transpose, M_inverse)
                 prod = np.matmul(prod, xa_vec)
 
-                print('prod: ', prod, 'sqrt(prod): ', self.np.sqrt(prod))
-                self.sbp_confidence[s][a] = self.C1 * np.log(self.episode) * self.np.sqrt(prod)
-                print('self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a])
+                # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
+                self.sbp_confidence[s][a] = self.C1 * np.log(self.episode) * np.sqrt(prod)
+                # print('self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a])
 
                 #---------- compute the confidence intervals for the CVDRisk_feedback
+                xsa_vec.reshape(1, -1)
+                # print('xsa_vec.shape: ', xsa_vec.shape)
+                # print('xsa_vec: ', xsa_vec)
                 y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0][0]
+                # print('y_pred: ', y_pred)
                 factor = 1/(1+np.exp(-y_pred))
-                print('factor: ', factor)
+                # print('factor: ', factor)
                 xsa = xsa_vec * factor**2 * (1-factor)**2
                 xsa_transpose = np.transpose(xsa)
                 M_inverse = np.linalg.inv(self.U_cvd)
 
                 prod = np.matmul(xsa_transpose, M_inverse)
                 prod = np.matmul(prod, xsa_vec)
-                print('prod: ', prod, 'sqrt(prod): ', self.np.sqrt(prod))
-                self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * self.np.sqrt(prod) + end_term
-                print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
+                # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
+                self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * np.sqrt(prod) + end_term
+                # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
+        
+        print('self.sbp_confidence[1][1]: ', self.sbp_confidence[1][1])
+        print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
 
     # update the empirical/estimated model based on the counters every episode
