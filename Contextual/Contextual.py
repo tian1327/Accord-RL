@@ -11,6 +11,40 @@ import sys
 import random
 from tqdm import tqdm
 
+context_fea = ['baseline_age', 'female', 'race_whiteother',
+                'edu_baseline_1',
+                'edu_baseline_2',
+                'edu_baseline_3',
+                'cvd_hx_baseline', 
+                'baseline_BMI', 
+                # 'baseline_BMI_discrete',
+                # 'cigarett_baseline',
+                'cigarett_baseline_1',
+               ]
+
+def generate_random_patient():
+    res = np.zeros(len(context_fea))
+
+    res[0] = np.random.randint(45, 80) # age
+    res[1] = np.random.randint(0, 2) # female
+    res[2] = np.random.randint(0, 2) # race_whiteother
+    edu = np.random.randint(0, 4)
+    if edu == 0:
+        res[3] = 1
+    elif edu == 1:
+        res[4] = 1
+    elif edu == 2:
+        res[5] = 1
+    res[6] = np.random.randint(0, 2) # cvd_hx_baseline
+    res[7] = np.random.uniform(18.5, 45) # baseline_BMI
+    res[8] = np.random.randint(0, 2) # cigarett_baseline_1
+    # print(res)
+    # print(res.shape)
+
+    return res
+
+
+
 def discretize_sbp(sbp):
     if sbp < 120:
         return 0
@@ -21,9 +55,14 @@ def discretize_sbp(sbp):
 
 start_time = time.time()
 
+
+
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1e3
+sample_data = False # whether to sample data from the dataset or randomly generate data
+
+
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -112,10 +151,16 @@ for sim in range(NUMBER_SIMULATIONS):
     episode = 0
     while episode < NUMBER_EPISODES:
 
-        # sample a patient from CONTEXT_VECTOR_dict
-        patient = np.random.choice(list(CONTEXT_VECTOR_dict.keys()), 1, replace = True)[0]
-        context_vec = CONTEXT_VECTOR_dict[patient][0]
-        sbp_discrete_init = CONTEXT_VECTOR_dict[patient][1]
+        if sample_data:
+            #---------- sample a patient from CONTEXT_VECTOR_dict
+            patient = np.random.choice(list(CONTEXT_VECTOR_dict.keys()), 1, replace = True)[0]
+            context_vec = CONTEXT_VECTOR_dict[patient][0]
+            sbp_discrete_init = CONTEXT_VECTOR_dict[patient][1]
+        else:
+            #---------- generate a random patient
+            context_vec = generate_random_patient()
+            sbp_discrete_init = np.random.choice([0, 1, 2], 1, replace = True)[0]
+
         # print('len(context_vec) =', len(context_vec))
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
