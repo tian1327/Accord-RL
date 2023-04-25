@@ -462,21 +462,21 @@ class utils:
         try:
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
-            eigenvalues = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue = np.min(eigenvalues)
-            print("Minimum eigenvalue of U_cvd:", min_eigenvalue)              
+            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+            print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)              
         except:
             print('cannot invert U_cvd, add an identity matrix to it')
-            eigenvalues = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue = np.min(eigenvalues)
-            print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue)
+            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+            print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
 
             self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
-            eigenvalues = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue = np.min(eigenvalues)
-            print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue)            
+            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+            print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
 
         # calculate the end_term 4 *hr/sqrt(t)
         hr = self.C2* np.sqrt(9+1+4)
@@ -489,21 +489,21 @@ class utils:
         try:
             U_sbp_inverse = np.linalg.inv(self.U_sbp)
 
-            eigenvalues = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue = np.min(eigenvalues)
-            print("Minimum eigenvalue of U_sbp:", min_eigenvalue)                    
+            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+            print("Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)                    
         except:
             print('cannot invert U_sbp, add an identity matrix to it')
-            eigenvalues = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue = np.min(eigenvalues)
-            print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue)   
+            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+            print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)   
 
             self.U_sbp = self.U_sbp + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
             U_sbp_inverse = np.linalg.inv(self.U_sbp)
 
-            eigenvalues = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue = np.min(eigenvalues)
-            print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue)
+            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+            print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
     
 
         for s in range(self.N_STATES):
@@ -551,6 +551,7 @@ class utils:
         print('self.sbp_confidence[1][1]: ', self.sbp_confidence[1][1])
         print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
+        return min_eigenvalue_cvd, min_eigenvalue_sbp
 
     # update the empirical/estimated model based on the counters every episode
     def update_empirical_model(self, ep): 

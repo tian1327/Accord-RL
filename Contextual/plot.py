@@ -21,6 +21,9 @@ obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 con_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 R_err_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 C_err_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
+min_eign_cvd = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
+min_eign_sbp = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
+
 
 for i in range(NUMBER_SIMULATIONS):
     
@@ -30,15 +33,19 @@ for i in range(NUMBER_SIMULATIONS):
     cons = []
     R_err = []
     C_err = []
+    eigen_cvd = []
+    eigen_sbp = []
     j = 0
     while 1:
         try:
             j += 1
-            [R_est_err, C_est_err, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+            [R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
             objs.append(ObjRegret)
             cons.append(ConRegret)
             R_err.append(R_est_err)
             C_err.append(C_est_err)
+            eigen_cvd.append(min_eign_cvd_list)
+            eigen_sbp.append(min_eign_sbp_list)
 
         except EOFError:
             break
@@ -48,11 +55,17 @@ for i in range(NUMBER_SIMULATIONS):
     flat_listcon = [item for sublist in cons for item in sublist]
     flat_R_err = [item for sublist in R_err for item in sublist]
     flat_C_err = [item for sublist in C_err for item in sublist]
+    flat_eigen_cvd = [item for sublist in eigen_cvd for item in sublist]
+    flat_eigen_sbp = [item for sublist in eigen_sbp for item in sublist]
+    
+
     #print(len(flat_listobj))
     obj_opsrl[i, :] = np.copy(flat_listobj[0:NUMBER_EPISODES_o])
     con_opsrl[i, :] = np.copy(flat_listcon[0:NUMBER_EPISODES_o])
     R_err_opsrl[i, :] = np.copy(flat_R_err[0:NUMBER_EPISODES_o])
     C_err_opsrl[i, :] = np.copy(flat_C_err[0:NUMBER_EPISODES_o])
+    min_eign_cvd[i, :] = np.copy(flat_eigen_cvd[0:NUMBER_EPISODES_o])
+    min_eign_sbp[i, :] = np.copy(flat_eigen_sbp[0:NUMBER_EPISODES_o])
 
 obj_opsrl_mean = np.mean(obj_opsrl, axis = 0)
 obj_opsrl_std = np.std(obj_opsrl, axis = 0)
@@ -65,6 +78,12 @@ R_err_opsrl_std = np.std(R_err_opsrl, axis = 0)
 
 C_err_opsrl_mean = np.mean(C_err_opsrl, axis = 0)
 C_err_opsrl_std = np.std(C_err_opsrl, axis = 0)
+
+min_eign_cvd_mean = np.mean(min_eign_cvd, axis = 0)
+min_eign_cvd_std = np.std(min_eign_cvd, axis = 0)
+
+min_eign_sbp_mean = np.mean(min_eign_sbp, axis = 0)
+min_eign_sbp_std = np.std(min_eign_sbp, axis = 0)
 
 x_o =  np.arange(0, NUMBER_EPISODES_o, L)
 
@@ -79,6 +98,28 @@ x_o =  np.arange(0, NUMBER_EPISODES_o, L)
 # fig, ax = plt.subplots(3, 1, figsize=(15, 5))
 
 plt.rcParams.update({'font.size': 16})
+
+
+ax = plt.gca()
+ax.patch.set_facecolor("lightsteelblue")
+ax.patch.set_alpha(0.4)
+
+plt.plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
+plt.plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'SBP min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
+plt.grid()
+plt.legend(loc = 'upper left',prop={'size': 13})
+plt.xlabel('Episode')
+plt.ylabel('min eigenvalue')
+plt.tight_layout()
+# plt.savefig("output/Model_Error.pdf")
+plt.show()
+
+
+
+
+
+
+
 ax = plt.gca()
 ax.patch.set_facecolor("lightsteelblue")
 ax.patch.set_alpha(0.4)

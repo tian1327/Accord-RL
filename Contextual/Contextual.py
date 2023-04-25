@@ -61,7 +61,7 @@ start_time = time.time()
 NUMBER_EPISODES = 1e6
 alpha_k = 1e3
 sample_data = False # whether to sample data from the dataset or randomly generate data
-
+random_action = True # whether to use random action or use the optimal action
 
 
 NUMBER_SIMULATIONS = 1
@@ -138,6 +138,8 @@ for sim in range(NUMBER_SIMULATIONS):
     cons = []
     R_est_err = []
     C_est_err = []
+    min_eign_cvd_list = []
+    min_eign_sbp_list = []
 
     first_infeasible = True
     found_optimal = False
@@ -215,6 +217,7 @@ for sim in range(NUMBER_SIMULATIONS):
             # R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
             # util_methods.compute_confidence_intervals(L, L_prime, 1)
             R_est_error, C_est_error = 0, 0 
+            min_eign_cvd, min_eign_sbp = 0, 0
             dtime = 0
 
         else: # when the episode is greater than K0, solve the extended LP to get the policy
@@ -222,7 +225,7 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            util_methods.compute_confidence_intervals(L, L_prime, 1)
+            min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L, L_prime, 1)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             t1 = time.time()
@@ -249,6 +252,8 @@ for sim in range(NUMBER_SIMULATIONS):
         
         R_est_err.append(R_est_error)
         C_est_err.append(C_est_error)
+        min_eign_cvd_list.append(min_eign_cvd)
+        min_eign_sbp_list.append(min_eign_sbp)
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
@@ -295,7 +300,12 @@ for sim in range(NUMBER_SIMULATIONS):
             # for i in range(len(prob)):
             #         prob[i] = 1/len(prob)
 
-            a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
+            if random_action:
+                # sample actions uniformly
+                a = int(np.random.choice(ACTIONS, 1, replace = True))
+            else:
+                a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
+
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             current_sbp_discrete = ep_sbp_discrete[h] # get the SBP for the current timestep
             # print('current_sbp_discrete = ', current_sbp_discrete)
@@ -320,17 +330,19 @@ for sim in range(NUMBER_SIMULATIONS):
 
             filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C_est_err, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
             objs = []
             cons = []
             R_est_err = []
             C_est_err = []
+            min_eign_sbp_list = []
+            min_eign_cvd_list = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C_est_err, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
         
         episode += 1
