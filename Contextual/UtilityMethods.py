@@ -461,6 +461,10 @@ class utils:
         # add an identy matrix to self.U_cvd if cannot be inverted
         try:
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
+
+            eigenvalues = np.linalg.eigvals(self.U_cvd)
+            min_eigenvalue = np.min(eigenvalues)
+            print("Minimum eigenvalue of U_cvd:", min_eigenvalue)              
         except:
             print('cannot invert U_cvd, add an identity matrix to it')
             eigenvalues = np.linalg.eigvals(self.U_cvd)
@@ -484,6 +488,10 @@ class utils:
         # add an identy matrix to self.U_sbp if cannot be inverted
         try:
             U_sbp_inverse = np.linalg.inv(self.U_sbp)
+
+            eigenvalues = np.linalg.eigvals(self.U_sbp)
+            min_eigenvalue = np.min(eigenvalues)
+            print("Minimum eigenvalue of U_sbp:", min_eigenvalue)                    
         except:
             print('cannot invert U_sbp, add an identity matrix to it')
             eigenvalues = np.linalg.eigvals(self.U_sbp)
