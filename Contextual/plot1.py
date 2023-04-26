@@ -15,8 +15,9 @@ if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[1]) + 1
 
 L = 1 # marker point interval
+mark_every_interval = 5 # marker point interval
 
-
+# ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 con_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 R_err_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -57,7 +58,7 @@ for i in range(NUMBER_SIMULATIONS):
     flat_C_err = [item for sublist in C_err for item in sublist]
     flat_eigen_cvd = [item for sublist in eigen_cvd for item in sublist]
     flat_eigen_sbp = [item for sublist in eigen_sbp for item in sublist]
-
+    
     #print(len(flat_listobj))
     obj_opsrl[i, :] = np.copy(flat_listobj[0:NUMBER_EPISODES_o])
     con_opsrl[i, :] = np.copy(flat_listcon[0:NUMBER_EPISODES_o])
@@ -86,88 +87,57 @@ min_eign_sbp_std = np.std(min_eign_sbp, axis = 0)
 
 x_o =  np.arange(0, NUMBER_EPISODES_o, L)
 
+# ----------------- Plot the results ----------------- #
 
+# plot the following 3 figures on the same plot using subplot
+# minimum eigenvalue of CVD
+# objective regret
+# constraint violation
+# estimation error
 
-fig, axs = plt.subplots(4, 1, figsize=(20, 5))
+import matplotlib.pyplot as plt
 
-# plt.rcParams.update({'font.size': 16})
+# create figure and subplots
+fig, axs = plt.subplots(1, 4, figsize=(18, 4))
 
-ax = plt.gca()
-ax.patch.set_facecolor("lightsteelblue")
-ax.patch.set_alpha(0.4)
+# set facecolor and alpha for all subplots
+for ax in axs:
+    ax.patch.set_facecolor("lightsteelblue")
+    ax.patch.set_alpha(0.4)
 
-plt.plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
-plt.plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'SBP min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
-plt.grid()
-plt.legend(loc = 'upper left',prop={'size': 13})
-plt.xlabel('Episode')
-plt.ylabel('min eigenvalue')
+# plot the first subplot
+axs[0].plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[0].plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'SBP min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[0].grid()
+axs[0].legend(loc = 'upper left',prop={'size': 13})
+axs[0].set_xlabel('Episode')
+axs[0].set_ylabel('min eigenvalue')
+
+# plot the second subplot
+axs[1].plot(x_o, obj_opsrl_mean[::L], label = 'Contextual', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+axs[1].grid()
+axs[1].legend(loc = 'upper left', prop={'size': 13})
+axs[1].set_xlabel('Episode')
+axs[1].set_ylabel('Objective Regret')
+
+# plot the third subplot
+axs[2].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'Contextual', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
+axs[2].grid()
+axs[2].legend(loc = 'upper right',prop={'size': 13})
+axs[2].set_ylim([-0.1e3, 5e3])
+axs[2].set_xlabel('Episode')
+axs[2].set_ylabel('Constraint Regret')
+
+# plot the fourth subplot
+axs[3].plot(x_o, R_err_opsrl_mean[::L], color='red',label = 'CVD Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[3].plot(x_o, C_err_opsrl_mean[::L], color='blue',label = 'SBP Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[3].grid()
+axs[3].legend(loc = 'upper right',prop={'size': 13})
+axs[3].set_ylim([0, 60])
+axs[3].set_xlabel('Episode')
+axs[3].set_ylabel('L2-Norm Error')
+
+# adjust layout and save the figure
 plt.tight_layout()
-# plt.savefig("output/Model_Error.pdf")
-plt.show()
-
-
-
-ax = plt.gca()
-ax.patch.set_facecolor("lightsteelblue")
-ax.patch.set_alpha(0.4)
-plt.locator_params(axis='y', nbins=6)
-plt.locator_params(axis='x', nbins=10)
-
-plt.plot(x_o, obj_opsrl_mean[::L], label = 'Contextual', color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=5)
-# plt.fill_between(x_o, obj_opsrl_mean[::L] - obj_opsrl_std[::L] ,obj_opsrl_mean[::L] + obj_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
-plt.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-plt.grid()
-plt.legend(loc = 'upper left', prop={'size': 13})
-
-# make x y axis square
-# ax.set_aspect('equal', adjustable='box')
-
-# set y axis limit
-# ax.set_ylim([-0.1e3, 5e3])
-
-plt.xlabel('Episode')
-plt.ylabel('Objective Regret')
-plt.tight_layout()
-# plt.savefig("output/Objective_Regret.pdf")
-# plt.close()
-plt.show()
-
-
-ax = plt.gca()
-ax.patch.set_facecolor("lightsteelblue")
-ax.patch.set_alpha(0.4)
-
-plt.plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'Contextual', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=5)
-# plt.fill_between(x_o, con_opsrl_mean[::L] - con_opsrl_std[::L] ,con_opsrl_mean[::L] + con_opsrl_std[::L], alpha=0.2, linewidth=2.5, edgecolor='saddlebrown', facecolor='saddlebrown')
-
-# ax.set_ylim([-0.1e3, 8.5e3])
-plt.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-# plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-# set y axis limit
-ax.set_ylim([-0.1e3, 5e3])
-plt.grid()
-plt.legend(loc = 'upper right',prop={'size': 13})
-plt.xlabel('Episode')
-plt.ylabel('Constraint Regret')
-# make x y axis square
-# ax.set_aspect('equal', adjustable='box')
-plt.tight_layout()
-# plt.savefig("output/Constraint_Regret.pdf")
-plt.show()
-
-
-ax = plt.gca()
-ax.patch.set_facecolor("lightsteelblue")
-ax.patch.set_alpha(0.4)
-
-ax.set_ylim([0, 60])
-plt.plot(x_o, R_err_opsrl_mean[::L], color='red',label = 'CVD Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
-plt.plot(x_o, C_err_opsrl_mean[::L], color='blue',label = 'SBP Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=5)
-plt.grid()
-plt.legend(loc = 'upper right',prop={'size': 13})
-plt.xlabel('Episode')
-plt.ylabel('L2-Norm Error')
-plt.tight_layout()
-# plt.savefig("output/Model_Error.pdf")
+plt.savefig("output/all_plots.pdf")
 plt.show()
