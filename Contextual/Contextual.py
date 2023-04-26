@@ -59,7 +59,7 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 1e3
+alpha_k = 1
 sample_data = False # whether to sample data from the dataset or randomly generate data
 random_action = True # whether to use random action or use the optimal action
 
@@ -98,6 +98,7 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
+k0 = -1 # no baseline
 
 print()
 print("alpha_k =", alpha_k)
@@ -141,8 +142,8 @@ for sim in range(NUMBER_SIMULATIONS):
     min_eign_cvd_list = []
     min_eign_sbp_list = []
 
-    first_infeasible = True
-    found_optimal = False
+    #first_infeasible = True
+    #found_optimal = False
 
     # global pi_b_prev, val_b_prev, cost_b_prev, q_b_prev
     # pi_b_prev = None
