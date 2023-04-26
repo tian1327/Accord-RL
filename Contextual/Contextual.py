@@ -172,7 +172,7 @@ for sim in range(NUMBER_SIMULATIONS):
         s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
 
-        # calculate the R and C based on the true R and C models
+        # calculate the R and C based on the true R and C models, regenerate for each episode
         util_methods.calculate_true_R_C(context_vec)
 
         # get the optimal and baseline policy for current patient with context_vec, and initial state s_idx
@@ -235,21 +235,25 @@ for sim in range(NUMBER_SIMULATIONS):
             t2 = time.time()
             dtime = t2 - t1
             # print("\nTime for extended LP = {:.2f} s".format(dtime))
-            
-            if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
-                pi_k = pi_b
-                val_k = val_b
-                cost_k = cost_b
-                q_k = q_b
-                if first_infeasible:
-                    print('\nlog:', log)
-                    first_infeasible = False
-            else:
-                if not found_optimal:
-                    print('\nlog:', log)
-                    print('In episode', episode, 'found optimal policy')
-                    print('k0 should be at least', episode)
-                    found_optimal = True
+
+            if log != 'Optimal':
+                print('Infeasible solution in Extended LP, continue to the next patient')
+                continue
+
+            # if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
+            #     pi_k = pi_b
+            #     val_k = val_b
+            #     cost_k = cost_b
+            #     q_k = q_b
+            #     if first_infeasible:
+            #         print('\nlog:', log)
+            #         first_infeasible = False
+            # else:
+            #     if not found_optimal:
+            #         print('\nlog:', log)
+            #         print('In episode', episode, 'found optimal policy')
+            #         print('k0 should be at least', episode)
+            #         found_optimal = True
         
         R_est_err.append(R_est_error)
         C_est_err.append(C_est_error)
