@@ -715,8 +715,15 @@ class utils:
             q_list = [q[(0,s,a)] for a in self.ACTIONS[s]]
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
-        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
-        # print(p.LpStatus[status])   # The solution status
+        #status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
+        status = opt_prob.solve(p.GUROBI_CMD(msg = 0)) # solve the constrained LP problem
+
+        #print(status)
+        #print(p.LpStatus[status])   # The solution status
+        if p.LpStatus[status] != 'Optimal':
+            print("No optimal solution found!")
+            return None, 0, 0, 0, p.LpStatus[status]
+
         #print(opt_prob)
         # print("printing best value constrained:", p.value(opt_prob.objective))
         # print(p.value(opt_prob.objective))
@@ -763,6 +770,7 @@ class utils:
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
         # combine following 3 print statements to 1 line
+        #print('opt_prob.objective:', p.value(opt_prob.objective))
         print(msg, p.LpStatus[status], "- best value constrained:", round(p.value(opt_prob.objective),4), "value from the conLPsolver: value of policy =", round(val_policy,4), "cost of policy =", round(con_policy,4))
         # print("\nvalue from the conLPsolver:")
         # print("value of policy =", val_policy)
@@ -842,7 +850,9 @@ class utils:
                         opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
                         opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
                                                                                                                                                                                                                                         
-        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        # status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
             # print(p.LpStatus[status])

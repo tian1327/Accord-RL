@@ -4,6 +4,16 @@ Safe RL for Healthcare
 ### To install environment
 `conda env create -f environment.yml`
 
+### Install Gurobi solver
+`conda config --add channels https://conda.anaconda.org/gurobi`  
+`conda install gurobi`   
+
+Run the license get commandline after applying for academic license in your account.  
+
+`conda remove gurobi`
+
+
+
 To export current environment: `conda env export > environment.yml`
 
 #### BPClass-DOPE
@@ -37,3 +47,5 @@ To export current environment: `conda env export > environment.yml`
 2. Run `python Contextual.py` to run the main algorithm
    
 3. Run `python plot1.py 1000` to plot all plots in the same figure
+
+

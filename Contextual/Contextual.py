@@ -58,13 +58,13 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 1
-sample_data = False # whether to sample data from the dataset or randomly generate data
-random_action = True # whether to use random action or use the optimal action
+alpha_k = 1e4
+sample_data = True # whether to sample data from the dataset or randomly generate data
+random_action = False # whether to use random action or use the optimal action
 
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 3 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
@@ -98,7 +98,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
 # k0 = -1 # no baseline
-K0 = 100 # 100 warm up episodes for random feature and random action
+# K0 = 100 # 100 warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
@@ -185,8 +185,8 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.update_episode(episode) # update the episode number for the utility methods
         
         # for some cases the baseline policy maynot be feasible, in this case, we use the previous feasible baseline policy
-        if status == 'Infeasible':
-            print("Baseline policy is infeasible, skip to the next patient")
+        if status != 'Optimal':
+            print("Baseline policy is {}, skip to the next patient".format(status))
             continue # simply skip this patient
 
             # print("Baseline policy is infeasible")
@@ -311,11 +311,11 @@ for sim in range(NUMBER_SIMULATIONS):
 
             ep_action_code.append(action_index_to_code[a]) 
             ep_cvdrisk.append(rew)
-            # next_state_list.append(next_state)
-            next_state_list.append(sbp_fb_dis)
+            next_state_list.append(next_state)
+            #next_state_list.append(sbp_fb_dis)
 
-            # s = next_state
-            s = sbp_fb_dis # use the sbp_fb_dis as the next state
+            s = next_state
+            #s = sbp_fb_dis # use the sbp_fb_dis as the next state
 
         
         print('a_list = ', a_list)
