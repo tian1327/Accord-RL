@@ -97,11 +97,12 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-k0 = -1 # no baseline
+# k0 = -1 # no baseline
+K0 = 100 # 100 warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
-print("K0 =", K0)
+print("++ K0 =", K0)
 print("number of episodes =", NUMBER_EPISODES)
 assert K0 < NUMBER_EPISODES, "K0 is greater than the number of episodes"
 
