@@ -17,6 +17,7 @@ class utils:
         self.P = P.copy()
         self.R = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_obs = np.zeros((self.N_STATES,self.N_ACTIONS)) # observed CVDRisk with noises added
+        self.R_y_pred = np.zeros((self.N_STATES,self.N_ACTIONS)) # predicted value from CVDRisk regression model
         self.C = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_model = R_model
         self.C_model = C_model
@@ -142,15 +143,18 @@ class utils:
                 # convert state and action code digit by digit to a list of 0 and 1
                 state_code_list = [int(x) for x in list(state_code)]
                 action_code_list = [int(x) for x in list(action_code)]
+            
                 # concatenate state and action code to the back of context vector
                 R_input = np.concatenate((context_vec, np.array(state_code_list), np.array(action_code_list)), axis=0)
+                # print('R_input.shape ', R_input.shape)
+                # print('R_input: ', R_input)
                 y_pred = self.R_model.predict(R_input.reshape(1, -1))   
                 # print('R_input: ', R_input, 'y_pred: ', y_pred)
                 reward = 1/(1+np.exp(-y_pred))
                 self.R[s][a] = reward
 
-                obs_reward = 1/(1+np.exp(-y_pred + np.random.normal(0, 0.05))) # with noises added
-                self.R_obs[s][a] = obs_reward
+                self.R_y_pred[s][a] = y_pred
+                # self.R_obs[s][a] = obs_reward
 
                 C_input = np.concatenate((context_vec, np.array(action_code_list)), axis=0)
                 self.C[s][a] = self.C_model.predict(C_input.reshape(1, -1))
@@ -371,17 +375,14 @@ class utils:
             probs[next_s] = self.P[s][a][next_s]
         next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
 
-        # use †he true reward and cost       
-        # rew = self.R[s][a]
-        # cost = self.C[s][a] # this is the SBP feedback, not the deviation 
-
         # add some noise to the reward and cost
         # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
-        rew = self.R_obs[s][a]
+
+        y_pred = self.R_y_pred[s][a]
+        obs_reward = 1/(1+np.exp(-y_pred + np.random.normal(0, 0.05))) # with noises added
+        rew = obs_reward
 
         cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
-        # cost = max(0, cost)
-        # cost = max(0, 110-SBP_feedback) + max(0, SBP_feedback-125) # the cost is the deviation
 
         return next_state, rew, cost
 

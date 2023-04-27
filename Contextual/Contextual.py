@@ -194,12 +194,10 @@ for sim in range(NUMBER_SIMULATIONS):
             # val_b = val_b_prev
             # cost_b = cost_b_prev
             # q_b = q_b_prev
-
             # print('pi_k =', pi_k)
             # print('pi_b_prev =', pi_b_prev)
 
         # else: # record the current feasible baseline policy
-
             # print("Baseline policy is feasible, record the current baseline policy")
             # pi_b_prev = pi_b
             # val_b_prev = val_b
@@ -229,15 +227,13 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L, L_prime, 1)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
-            t1 = time.time()
-            # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) 
+            t1 = time.time()            
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
             t2 = time.time()
             dtime = t2 - t1
-            # print("\nTime for extended LP = {:.2f} s".format(dtime))
 
             if log != 'Optimal':
-                print('Infeasible solution in Extended LP, continue to the next patient')
+                print('+++++Infeasible solution in Extended LP, continue to the next patient')
                 continue
 
             # if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
@@ -289,25 +285,10 @@ for sim in range(NUMBER_SIMULATIONS):
         
         s = s_idx_init # set the state to the initial state
         for h in range(EPISODE_LENGTH): # for each step in current episode
-            prob = pi_k[s, h, :]
-            
-            # if sum(prob) != 1:
-            #    print(s, h)
-            #    print(prob)
-            
-            # # check if prob has any negative values
-            # for i in range(len(prob)):
-            #     if prob[i] < 0:
-            #         # print("negative prob: ", prob[i])
-            #         prob[i] = 0
-            
-            # assign uniform prob to prob, used for testing the code only
-            # for i in range(len(prob)):
-            #         prob[i] = 1/len(prob)
+            prob = pi_k[s, h, :]           
 
             if random_action:
-                # sample actions uniformly
-                a = int(np.random.choice(ACTIONS, 1, replace = True))
+                a = int(np.random.choice(ACTIONS, 1, replace = True)) # sample actions uniformly
             else:
                 a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
 
@@ -330,7 +311,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             s = next_state
 
-        # dump results out every 50000 episodes
+        # dump results out every x episodes
         if episode != 0 and episode%200== 0:
 
             filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
