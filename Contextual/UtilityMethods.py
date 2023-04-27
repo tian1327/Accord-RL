@@ -379,8 +379,10 @@ class utils:
         # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
 
         y_pred = self.R_y_pred[s][a]
-        obs_reward = 1/(1+np.exp(-y_pred + np.random.normal(0, 0.05))) # with noises added
+        noise = np.random.normal(0, 0.05)
+        obs_reward = 1/(1+np.exp(-y_pred + noise)) # with noises added
         rew = obs_reward
+        # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
 
         cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
 

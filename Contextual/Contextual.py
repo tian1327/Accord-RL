@@ -56,7 +56,6 @@ def discretize_sbp(sbp):
 start_time = time.time()
 
 
-
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1
@@ -65,7 +64,7 @@ random_action = True # whether to use random action or use the optimal action
 
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
@@ -280,8 +279,10 @@ for sim in range(NUMBER_SIMULATIONS):
         ep_sbp_discrete = [] # record the SBP for each step in a episode, for the current timestep
         ep_sbp_discrete.append(sbp_discrete_init)
         ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+        a_list = []
         ep_action_code = [] # record the action code for each step in a episode
-        ep_cvdrisk = [] # record the CVDRisk for each step in a episode    
+        ep_cvdrisk = [] # record the CVDRisk for each step in a episode
+        next_state_list = []    
         
         s = s_idx_init # set the state to the initial state
         for h in range(EPISODE_LENGTH): # for each step in current episode
@@ -292,6 +293,7 @@ for sim in range(NUMBER_SIMULATIONS):
             else:
                 a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
 
+            a_list.append(a)
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             current_sbp_discrete = ep_sbp_discrete[h] # get the SBP for the current timestep
             # print('current_sbp_discrete = ', current_sbp_discrete)
@@ -308,8 +310,19 @@ for sim in range(NUMBER_SIMULATIONS):
 
             ep_action_code.append(action_index_to_code[a]) 
             ep_cvdrisk.append(rew)
+            # next_state_list.append(next_state)
+            next_state_list.append(sbp_fb_dis)
 
-            s = next_state
+            # s = next_state
+            s = sbp_fb_dis # use the sbp_fb_dis as the next state
+
+        
+        print('a_list = ', a_list)
+        print('ep_action_code = ', ep_action_code)
+        print('ep_sbp_cont = ', ep_sbp_cont)
+        print('ep_sbp_discrete = ', ep_sbp_discrete)
+        print('ep_cvdrisk = ', ep_cvdrisk)
+        print('next_state_list = ', next_state_list)
 
         # dump results out every x episodes
         if episode != 0 and episode%200== 0:
