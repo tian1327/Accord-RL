@@ -100,8 +100,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-K0 = -1 # no baseline
-# K0 = 10 # warm up episodes for random feature and random action
+#K0 = -1 # no baseline
+K0 = 100 # warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
@@ -186,10 +186,10 @@ for sim in range(NUMBER_SIMULATIONS):
             continue # simply skip this patient
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
-            # pi_k = pi_b
-            # val_k = val_b
-            # cost_k = cost_b
-            # q_k = q_b
+            pi_k = pi_b
+            val_k = val_b
+            cost_k = cost_b
+            q_k = q_b
 
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter

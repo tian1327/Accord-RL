@@ -16,7 +16,7 @@ if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[2]) + 1
 
 L = 1 # marker point interval
-mark_every_interval = 100 # marker point interval
+mark_every_interval = 500 # marker point interval
 
 # ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
