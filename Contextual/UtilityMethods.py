@@ -259,7 +259,7 @@ class utils:
         cvd_regr.fit(x_train, y_train)
         y_pred = cvd_regr.predict(x_train)
         y_pred_transformed = 1/(1+np.exp(-y_pred))
-        mse = mean_squared_error(y_train, y_pred_transformed)
+        mse = mean_squared_error(y_train, y_pred)
         cvd_rmse = np.sqrt(mse)        
         self.cvdrisk_regr = cvd_regr
 
@@ -305,29 +305,39 @@ class utils:
         #------------ calculate the l2norm of the difference between the weights of true model and estimated model
         
         # get the weights of self.R_model, which is a linear regression model
-        R_model_weights = self.R_model.coef_
+        R_model_weights = list(self.R_model.coef_)
         # print('R_model_weights: ', R_model_weights)
-        R_model_intercept = self.R_model.intercept_
+        R_model_intercept = [self.R_model.intercept_]
         # print('R_model_intercept: ', R_model_intercept)
         R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
+        print('+++R_model_wt_vec: ', R_model_wt_vec)
+        #print('type(R_model_wt_vec): ', type(R_model_wt_vec))
         
         # get the weights of self.cvdrisk_regr, which is a linear regression model
-        R_hat_weights = self.cvdrisk_regr.coef_
-        R_hat_intercept = self.cvdrisk_regr.intercept_
+        R_hat_weights = self.cvdrisk_regr.coef_.tolist()[0]
+        #print('+++R_hat_weights: ', R_hat_weights)
+        #print('type(R_hat_weights): ', type(R_hat_weights))
+        R_hat_intercept = self.cvdrisk_regr.intercept_.tolist()
+        #print('+++R_hat_intercept: ', R_hat_intercept)
+        #print('type(R_hat_intercept): ', type(R_hat_intercept))
         R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
+        print('+++R_hat_wt_vec: ', R_hat_wt_vec)
+        #print('type(R_hat_wt_vec): ', type(R_hat_wt_vec))
 
         # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
         R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
 
         # get the weights of self.C_model, which is a linear regression model
-        C_model_weights = self.C_model.coef_
-        C_model_intercept = self.C_model.intercept_
+        C_model_weights = list(self.C_model.coef_)
+        C_model_intercept = [self.C_model.intercept_]
         C_model_wt_vec = np.array(C_model_weights + C_model_intercept)
+        print('+++C_model_wt_vec: ', C_model_wt_vec)
 
         # get the weights of self.sbp_regr, which is a linear regression model
-        C_hat_weights = self.sbp_regr.coef_
-        C_hat_intercept = self.sbp_regr.intercept_
+        C_hat_weights = self.sbp_regr.coef_.tolist()[0]
+        C_hat_intercept = self.sbp_regr.intercept_.tolist()
         C_hat_wt_vec = np.array(C_hat_weights + C_hat_intercept)
+        print('+++C_hat_wt_vec: ', C_hat_wt_vec)
 
         # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
         C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)

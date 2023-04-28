@@ -98,7 +98,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
 #K0 = -1 # no baseline
-K0 = 100 # 100 warm up episodes for random feature and random action
+K0 = 10 # 100 warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
