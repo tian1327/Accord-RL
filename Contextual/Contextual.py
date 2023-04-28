@@ -55,7 +55,6 @@ def discretize_sbp(sbp):
 
 start_time = time.time()
 
-
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1e4
