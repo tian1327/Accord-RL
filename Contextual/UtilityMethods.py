@@ -812,8 +812,7 @@ class utils:
                                                                                                                                                                                   
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
-    def compute_extended_LP(self, ep, cb):
-        # ep, cb not used here
+    def compute_extended_LP(self,):
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h
@@ -933,8 +932,7 @@ class utils:
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
 
-    def compute_extended_LP_random(self, ep, cb):
-        # ep, cb not used here
+    def compute_extended_LP_random(self,):
 
         # assign uniform probability to opt_policy
         opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]

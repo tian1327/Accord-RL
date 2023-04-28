@@ -61,11 +61,11 @@ start_time = time.time()
 NUMBER_EPISODES = 1e6
 alpha_k = 1e4
 sample_data = True # whether to sample data from the dataset or randomly generate data
-random_action = True # whether to use random action or use the optimal action
+random_action = False # whether to use random action or use the optimal action
 use_gurobi = True # whether to use gurobi to solve the optimization problem
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 6 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 8 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
@@ -201,21 +201,21 @@ for sim in range(NUMBER_SIMULATIONS):
             dtime = 0
 
         else: # when the episode is greater than K0, solve the extended LP to get the policy
+            t1 = time.time() 
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
             min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
-
-            t1 = time.time()            
-            # pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random(0, Cb)
+                       
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            # pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random()
             t2 = time.time()
             dtime = t2 - t1
 
             if log != 'Optimal':
-                print('+++++Infeasible solution in Extended LP, continue to the next patient, Cb =', Cb)
+                print('+++++Infeasible solution in Extended LP, continue to the next patient')
                 continue
 
             # if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
