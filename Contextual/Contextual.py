@@ -59,12 +59,12 @@ start_time = time.time()
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1e4
-sample_data = True # whether to sample data from the dataset or randomly generate data
-random_action = False # whether to use random action or use the optimal action
+sample_data = False # whether to sample data from the dataset or randomly generate data
+random_action = True # whether to use random action or use the optimal action
 
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 3 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 4 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
@@ -97,8 +97,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-# k0 = -1 # no baseline
-# K0 = 100 # 100 warm up episodes for random feature and random action
+#K0 = -1 # no baseline
+K0 = 100 # 100 warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
@@ -179,7 +179,8 @@ for sim in range(NUMBER_SIMULATIONS):
         opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
 
         util_methods.update_CONSTRAINT(Cb) # set the C to Cb for calculating the baseline policy
-        pi_b, val_b, cost_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
+        status = 'Optimal'
+        #pi_b, val_b, cost_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
         util_methods.update_CONSTRAINT(CONSTRAINT) # reset the C to the original value
 
         util_methods.update_episode(episode) # update the episode number for the utility methods
@@ -205,10 +206,10 @@ for sim in range(NUMBER_SIMULATIONS):
             # q_b_prev = q_b
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
-            pi_k = pi_b
-            val_k = val_b
-            cost_k = cost_b
-            q_k = q_b
+            # pi_k = pi_b
+            # val_k = val_b
+            # cost_k = cost_b
+            # q_k = q_b
 
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
@@ -228,7 +229,8 @@ for sim in range(NUMBER_SIMULATIONS):
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             t1 = time.time()            
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            log = 'Optimal'
+            #pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
             t2 = time.time()
             dtime = t2 - t1
 
@@ -257,19 +259,24 @@ for sim in range(NUMBER_SIMULATIONS):
         min_eign_sbp_list.append(min_eign_sbp)
 
         if episode == 0:
-            ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
-            ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
+            ObjRegret2[sim, episode] = 0
+            ConRegret2[sim, episode] = 0
+            #ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
+            #ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[s_idx_init, 0] > CONSTRAINT:
-                NUMBER_INFEASIBILITIES[sim, episode] = 1
+            # if cost_k[s_idx_init, 0] > CONSTRAINT:
+            #     NUMBER_INFEASIBILITIES[sim, episode] = 1
         else:
-            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
-            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
+            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + 0
+            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + 0
+
+            #ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
+            #ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[s_idx_init, 0] > CONSTRAINT:
-                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+            #if cost_k[s_idx_init, 0] > CONSTRAINT:
+            #    NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
 
         print('Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
               episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
@@ -287,7 +294,7 @@ for sim in range(NUMBER_SIMULATIONS):
         
         s = s_idx_init # set the state to the initial state
         for h in range(EPISODE_LENGTH): # for each step in current episode
-            prob = pi_k[s, h, :]           
+            #prob = pi_k[s, h, :]           
 
             if random_action:
                 a = int(np.random.choice(ACTIONS, 1, replace = True)) # sample actions uniformly
@@ -325,6 +332,8 @@ for sim in range(NUMBER_SIMULATIONS):
         print('ep_cvdrisk = ', ep_cvdrisk)
         print('next_state_list = ', next_state_list)
 
+        pi_k = None
+        q_k = None
         # dump results out every x episodes
         if episode != 0 and episode%200== 0:
 

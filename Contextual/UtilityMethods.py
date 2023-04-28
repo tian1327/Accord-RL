@@ -379,12 +379,14 @@ class utils:
         # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
 
         y_pred = self.R_y_pred[s][a]
-        noise = np.random.normal(0, 0.05)
+        #noise = np.random.normal(0, 0.05)
+        noise = 0
         obs_reward = 1/(1+np.exp(-y_pred + noise)) # with noises added
         rew = obs_reward
         # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
 
-        cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+        cost = self.C[s][a]
+        #cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
 
         return next_state, rew, cost
 
@@ -428,6 +430,9 @@ class utils:
     # compute the confidence intervals beta for the transition probabilities
     def compute_confidence_intervals(self, ep, L_prime, mode): 
                                          # ep = L
+
+        if self.episode == 0:
+            return -1, -1
 
         # ----------------- get U_cvd_inverse -----------------
         # reset the self.U_cvd
