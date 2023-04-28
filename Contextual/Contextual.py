@@ -60,12 +60,12 @@ start_time = time.time()
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1e4
-sample_data = False # whether to sample data from the dataset or randomly generate data
+sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = True # whether to use random action or use the optimal action
-use_gurobi = False # whether to use gurobi to solve the optimization problem
+use_gurobi = True # whether to use gurobi to solve the optimization problem
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 4 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 6 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
@@ -253,8 +253,8 @@ for sim in range(NUMBER_SIMULATIONS):
             if cost_k[s_idx_init, 0] > CONSTRAINT:
                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
 
-        print('Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
-              episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
+              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))

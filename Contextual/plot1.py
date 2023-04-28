@@ -12,11 +12,11 @@ NUMBER_EPISODES_o = 5000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
-    NUMBER_EPISODES_o = int(sys.argv[1]) + 1
-    fn = sys.argv[2]
+    fn = sys.argv[1]
+    NUMBER_EPISODES_o = int(sys.argv[2]) + 1
 
 L = 1 # marker point interval
-mark_every_interval = 5 # marker point interval
+mark_every_interval = 50 # marker point interval
 
 # ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -29,7 +29,6 @@ min_eign_sbp = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 
 for i in range(NUMBER_SIMULATIONS):
     
-    #filename = 'output/opsrl100.pkl'
     filename = fn
     f = open(filename, 'rb')
     objs = []
