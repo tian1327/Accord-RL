@@ -43,6 +43,7 @@ class utils:
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
         self.U_sbp =  np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
         self.U_cvd = np.zeros((CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, +1 for the sbp_discrete
+        self.U_xsa_prod_dict = dict() # trade memory for speed
 
         # print('Actions: ', ACTIONS)
         # print('self.ACTIONS: ', self.ACTIONS)
@@ -470,19 +471,15 @@ class utils:
         y_pred = 1.0/(1.0+np.exp(-Y_pred))
 
         for i in range(self.X.shape[0]):
-            # x = self.X[i]
-            # s = self.sbp_dis[i]
-            # a = self.A[i]
-            # xsa_vec = np.concatenate((x, s, a)).reshape(-1, 1)
-            # print('xsa_vec.shape: ', xsa_vec.shape)
 
-            xsa_vec = XSA[i].reshape(-1, 1)
-            prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
-            # print('prod.shape: ', prod.shape)
+            if i in self.U_xsa_prod_dict:
+                prod = self.U_xsa_prod_dict[i]
+            else:
+                xsa_vec = XSA[i].reshape(-1, 1)
+                prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
+                self.U_xsa_prod_dict[i] = prod
 
-            y = y_pred[i]
-            factor = 1.0/(1.0+np.exp(-y))
-            # print('factor: ', factor)
+            factor = y_pred[i]
 
             u_cvd = prod * factor**2 * (1.0-factor)**2
             self.U_cvd = self.U_cvd + u_cvd
