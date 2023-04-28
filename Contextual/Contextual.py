@@ -43,8 +43,6 @@ def generate_random_patient():
 
     return res
 
-
-
 def discretize_sbp(sbp):
     if sbp < 120:
         return 0
@@ -53,6 +51,9 @@ def discretize_sbp(sbp):
     else:
         return 2
 
+
+
+#--------------------------------------------------------------------------------------
 start_time = time.time()
 
 # control parameters
@@ -60,15 +61,15 @@ NUMBER_EPISODES = 1e6
 alpha_k = 1e4
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-
+use_gurobi = True # whether to use gurobi to solve the optimization problem
 
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 3 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 8 #Change this field to set the seed for the experiment.
 
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
-# remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
+# remove old file
 old_filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
 if os.path.exists(old_filename):
     os.remove(old_filename)
@@ -88,6 +89,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # Cb = cost_b[0, 0]
 Cb = Cb
+Cb = 150
+
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
@@ -96,8 +99,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-# k0 = -1 # no baseline
-# K0 = 100 # 100 warm up episodes for random feature and random action
+#K0 = -1 # no baseline
+K0 = 100 # warm up episodes for random feature and random action
 
 print()
 print("alpha_k =", alpha_k)
@@ -117,12 +120,11 @@ L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA
 L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk, not used in Contextual algorithm
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
 print("L =", L)
-print("L_prime =", L_prime)
 
 for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb) # set the utility methods for each run
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
 
     # for empirical estimate of transition probabilities P_hat
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
@@ -143,12 +145,6 @@ for sim in range(NUMBER_SIMULATIONS):
 
     #first_infeasible = True
     #found_optimal = False
-
-    # global pi_b_prev, val_b_prev, cost_b_prev, q_b_prev
-    # pi_b_prev = None
-    # val_b_prev = None
-    # cost_b_prev = None
-    # q_b_prev = None
 
     episode = 0
     while episode < NUMBER_EPISODES:
@@ -188,21 +184,6 @@ for sim in range(NUMBER_SIMULATIONS):
             print("Baseline policy is {}, skip to the next patient".format(status))
             continue # simply skip this patient
 
-            # print("Baseline policy is infeasible")
-            # pi_b = pi_b_prev
-            # val_b = val_b_prev
-            # cost_b = cost_b_prev
-            # q_b = q_b_prev
-            # print('pi_k =', pi_k)
-            # print('pi_b_prev =', pi_b_prev)
-
-        # else: # record the current feasible baseline policy
-            # print("Baseline policy is feasible, record the current baseline policy")
-            # pi_b_prev = pi_b
-            # val_b_prev = val_b
-            # cost_b_prev = cost_b
-            # q_b_prev = q_b
-
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
             val_k = val_b
@@ -219,15 +200,16 @@ for sim in range(NUMBER_SIMULATIONS):
             dtime = 0
 
         else: # when the episode is greater than K0, solve the extended LP to get the policy
+            t1 = time.time() 
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.add_ep_rewards_costs(ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L, L_prime, 1)
+            min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
-
-            t1 = time.time()            
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+                       
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            # pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random()
             t2 = time.time()
             dtime = t2 - t1
 
@@ -268,10 +250,10 @@ for sim in range(NUMBER_SIMULATIONS):
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
             if cost_k[s_idx_init, 0] > CONSTRAINT:
-                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+               NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
 
-        print('Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
-              episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
+              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
@@ -324,6 +306,8 @@ for sim in range(NUMBER_SIMULATIONS):
         print('ep_cvdrisk = ', ep_cvdrisk)
         print('next_state_list = ', next_state_list)
 
+        pi_k = None
+        q_k = None
         # dump results out every x episodes
         if episode != 0 and episode%200== 0:
 
