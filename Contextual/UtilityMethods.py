@@ -453,8 +453,7 @@ class utils:
 
 
     # compute the confidence intervals beta for the transition probabilities
-    def compute_confidence_intervals(self, ep, L_prime, mode): 
-                                         # ep = L
+    def compute_confidence_intervals(self, L): 
 
         if self.episode == 0:
             return -1, -1
@@ -546,8 +545,8 @@ class utils:
                         
                     for s_1 in range(self.N_STATES):
                         # equation (5) in the paper to calculate the confidence interval for P
-                        self.beta_prob[s][a,s_1] = min(2*np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
-                                                            14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)                            
+                        self.beta_prob[s][a,s_1] = min(2*np.sqrt(L*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                            14*L/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)                            
                         # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
 
                 #---------- compute the confidence intervals for the SBP_feedback
@@ -803,10 +802,10 @@ class utils:
 
         # combine following 3 print statements to 1 line
         #print('opt_prob.objective:', p.value(opt_prob.objective))
-        print(msg, p.LpStatus[status], "- best value constrained:", round(p.value(opt_prob.objective),4), "value from the conLPsolver: value of policy =", round(val_policy,4), "cost of policy =", round(con_policy,4))
-        # print("\nvalue from the conLPsolver:")
-        # print("value of policy =", val_policy)
-        # print("cost of policy =", con_policy)
+        print(msg, p.LpStatus[status], 
+                "- best value constrained:", round(p.value(opt_prob.objective),4), 
+                ", value from the conLPsolver: value of policy =", round(val_policy,4), 
+                ", cost of policy =", round(con_policy,4))
 
         # evaluate the optimal policy using finite horizon policy evaluation
         q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C) 
@@ -936,7 +935,23 @@ class utils:
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
-    
+
+    def compute_extended_LP_random(self, ep, cb):
+        # ep, cb not used here
+
+        # assign uniform probability to opt_policy
+        opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]
+        for s in range(self.N_STATES):
+            for h in range(self.EPISODE_LENGTH):
+                for a in self.ACTIONS[s]:
+                    opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
+
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C)
+                                                                                                                                                                                                                                                                                                                                                  
+                                                                                                                                                                                                                                                                                                                                                  
+        return opt_policy, value_of_policy, cost_of_policy, 'Optimal', q_policy
+
+
     
     def compute_LP_Tao(self, ep, cb):
         opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) #[s,h,a]
