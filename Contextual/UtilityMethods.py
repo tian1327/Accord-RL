@@ -7,8 +7,9 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
 
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
+    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi):
 
+        self.use_gurobi = use_gurobi
         self.EPISODE_LENGTH = EPISODE_LENGTH
         self.N_STATES = N_STATES
         self.N_ACTIONS = N_ACTIONS
@@ -743,8 +744,11 @@ class utils:
             q_list = [q[(0,s,a)] for a in self.ACTIONS[s]]
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
-        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
-        # status = opt_prob.solve(p.GUROBI_CMD(msg = 0)) # solve the constrained LP problem
+        if self.use_gurobi:
+            status = opt_prob.solve(p.GUROBI_CMD(msg = 0))
+        else:
+            status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
+
 
         #print(status)
         #print(p.LpStatus[status])   # The solution status
@@ -877,9 +881,11 @@ class utils:
                     for s_1 in self.Psparse[s][a]:                
                         opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
                         opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
-                                                                                                                                                                                                                                        
-        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
-        #status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+                                                                                                                                                                                                                                     
+        if self.use_gurobi:
+            status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        else:
+            status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
 
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':

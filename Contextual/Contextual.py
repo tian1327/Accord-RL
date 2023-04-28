@@ -61,7 +61,7 @@ NUMBER_EPISODES = 1e6
 alpha_k = 1e4
 sample_data = False # whether to sample data from the dataset or randomly generate data
 random_action = True # whether to use random action or use the optimal action
-
+use_gurobi = False # whether to use gurobi to solve the optimization problem
 
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 4 #Change this field to set the seed for the experiment.
@@ -123,7 +123,7 @@ print("L_prime =", L_prime)
 for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb) # set the utility methods for each run
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
 
     # for empirical estimate of transition probabilities P_hat
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
