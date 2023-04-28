@@ -150,7 +150,7 @@ class utils:
                 # print('R_input: ', R_input)
                 y_pred = self.R_model.predict(R_input.reshape(1, -1))   
                 # print('R_input: ', R_input, 'y_pred: ', y_pred)
-                reward = 1/(1+np.exp(-y_pred))
+                reward = 1.0 /(1.0+np.exp(-y_pred))
                 self.R[s][a] = reward
 
                 self.R_y_pred[s][a] = y_pred
@@ -239,6 +239,8 @@ class utils:
 
         return sbp_xa_vec, cvd_xsa_vec
 
+
+
     def run_regression_rewards_costs(self, episode):
 
         # do nothing if no history yet
@@ -247,35 +249,52 @@ class utils:
         
         #---------run logistic regression to estimate the CVDRisk feedback, get \theta r
 
-        # concatenate the self.X with self.sbp_dis, and self.A horizontally
         x_train = np.concatenate((self.X, self.sbp_dis, self.A), axis=1)
-        # print('x_train.shape', x_train.shape)
-        # transform the y_train which is self.cvdrisk using -np.log((1-y)/y) 
-        y_train = -np.log((1-self.cvdrisk)/self.cvdrisk) 
-        # print('y_train.shape', y_train.shape)
+        # print('----x_train.shape', x_train.shape)
+
+        # replace the training data here with data used for offline training
+        # x_train = np.load('output/X.npy')
+        # self.cvdrisk = np.load('output/y_true.npy')
+        # print('----x_train.shape', x_train.shape)
+
+        y = self.cvdrisk[:, 0] 
+        # transform the y which is self.cvdrisk using -np.log((1-y)/y) 
+        y_train = -np.log((1.0-y)/y) 
 
         # create a linear regression to fit x_train and y_train
         cvd_regr = LinearRegression()
         cvd_regr.fit(x_train, y_train)
+        cvd_regr.score(x_train, y_train)
+        print('+++cvd_regr.score(x_train, y_train) =', cvd_regr.score(x_train, y_train))
+
         y_pred = cvd_regr.predict(x_train)
-        y_pred_transformed = 1/(1+np.exp(-y_pred))
-        mse = mean_squared_error(y_train, y_pred)
+        y_pred_transformed = 1.0/(1.0+np.exp(-y_pred))
+        mse = mean_squared_error(y, y_pred_transformed)
         cvd_rmse = np.sqrt(mse)        
         self.cvdrisk_regr = cvd_regr
+        print('+++cvd_rmse =', cvd_rmse)
+        
 
         #---------run linear regression to estimate the deviation from the SBP_feedback, get \theta c
         x_train = np.concatenate((self.X, self.A), axis=1)
-        # print('x_train.shape', x_train.shape)
-        y_train = self.sbp_cont
-        # print('y_train.shape', y_train.shape)
+        # print('---sbp x_train.shape', x_train.shape)
+        y_train = self.sbp_cont[:, 0]
+        # print('---sbp y_train.shape', y_train.shape)
+
+        # x_train = np.load('output/X_sbp.npy')
+        # print('---sbp x_train.shape', x_train.shape)
+        # y_train = np.load('output/y_sbp.npy')
+        # print('---sbp y_train.shape', y_train.shape)
 
         # create a linear regression to fit x_train and y_train
         sbp_regr = LinearRegression()
         sbp_regr.fit(x_train, y_train)
+        sbp_regr.score(x_train, y_train)
+        print('+++sbp_regr.score(x_train, y_train) =', sbp_regr.score(x_train, y_train))
         y_pred = sbp_regr.predict(x_train)
         mse = mean_squared_error(y_train, y_pred)
         sbp_rmse = np.sqrt(mse)
-        # print('SBP RMSE = ', sbp_rmse)
+        print('+++SBP RMSE = ', sbp_rmse)
         self.sbp_regr = sbp_regr
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
@@ -288,17 +307,20 @@ class utils:
                 action_code_list = [int(x) for x in list(action_code)]
                 # concatenate state and action code to the back of context vector
                 R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
-                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0][0]
                 # print('R_input: ', R_input)
                 # print('R_input.shape: ', R_input.shape)
-                # print('self.context_vector.shape: ', self.CONTEXT_VECTOR.shape) 
+
+                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
                 # print('y_pred: ', y_pred)
+
                 reward = 1/(1+np.exp(-y_pred))
                 self.R_hat[s][a] = reward
 
                 C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
-                self.C_hat[s][a] = self.sbp_regr.predict(C_input.reshape(1, -1))
-
+                cost = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
+                self.C_hat[s][a] = cost
+                # print('cost: ', cost)
+                # print('cost.shape: ', cost.shape)
                 # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
                 # stop        
 
@@ -308,17 +330,17 @@ class utils:
         R_model_weights = list(self.R_model.coef_)
         # print('R_model_weights: ', R_model_weights)
         R_model_intercept = [self.R_model.intercept_]
-        # print('R_model_intercept: ', R_model_intercept)
+        print('+++R_model_intercept: ', R_model_intercept)
         R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
         print('+++R_model_wt_vec: ', R_model_wt_vec)
         #print('type(R_model_wt_vec): ', type(R_model_wt_vec))
         
         # get the weights of self.cvdrisk_regr, which is a linear regression model
-        R_hat_weights = self.cvdrisk_regr.coef_.tolist()[0]
-        #print('+++R_hat_weights: ', R_hat_weights)
+        R_hat_weights = self.cvdrisk_regr.coef_.tolist()
+        # print('+++R_hat_weights: ', R_hat_weights)
         #print('type(R_hat_weights): ', type(R_hat_weights))
-        R_hat_intercept = self.cvdrisk_regr.intercept_.tolist()
-        #print('+++R_hat_intercept: ', R_hat_intercept)
+        R_hat_intercept = [self.cvdrisk_regr.intercept_]
+        print('+++R_hat_intercept: ', R_hat_intercept)
         #print('type(R_hat_intercept): ', type(R_hat_intercept))
         R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
         print('+++R_hat_wt_vec: ', R_hat_wt_vec)
@@ -330,12 +352,14 @@ class utils:
         # get the weights of self.C_model, which is a linear regression model
         C_model_weights = list(self.C_model.coef_)
         C_model_intercept = [self.C_model.intercept_]
+        print('+++C_model_intercept: ', C_model_intercept)
         C_model_wt_vec = np.array(C_model_weights + C_model_intercept)
         print('+++C_model_wt_vec: ', C_model_wt_vec)
 
         # get the weights of self.sbp_regr, which is a linear regression model
-        C_hat_weights = self.sbp_regr.coef_.tolist()[0]
-        C_hat_intercept = self.sbp_regr.intercept_.tolist()
+        C_hat_weights = self.sbp_regr.coef_.tolist()
+        C_hat_intercept = [self.sbp_regr.intercept_]
+        print('+++C_hat_intercept: ', C_hat_intercept)
         C_hat_wt_vec = np.array(C_hat_weights + C_hat_intercept)
         print('+++C_hat_wt_vec: ', C_hat_wt_vec)
 
@@ -343,6 +367,7 @@ class utils:
         C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
 
         print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))
+
 
         return (R_est_error, C_est_error)
 
@@ -362,17 +387,6 @@ class utils:
         #------- for self.U_cvd, not doing here for each timestep, because we don't have estimated regression model for the first k0 episode
         # instead we do this in the compute_confidence_interval function
 
-        # design_vector = cvd_xsa_vec
-        # design_vector_transpose = np.transpose(design_vector)
-        # product = np.matmul(design_vector, design_vector_transpose)
-
-        # # multiple the product with a numerical factor
-        # factor = self.cvdrisk_regr.predict(design_vector.reshape(1, -1))[0][0]
-        # print('factor: ', factor)
-        # product = product * factor**2 * (1-factor)**2
-
-        # self.U_cvd = self.U_cvd + product
-
 
 
     def update_CONSTRAINT(self, new_CONSTRAINT):
@@ -391,7 +405,7 @@ class utils:
         y_pred = self.R_y_pred[s][a]
         #noise = np.random.normal(0, 0.05)
         noise = 0
-        obs_reward = 1/(1+np.exp(-y_pred + noise)) # with noises added
+        obs_reward = 1.0 /(1.0+np.exp(-y_pred + noise)) # with noises added
         rew = obs_reward
         # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
 
@@ -453,7 +467,7 @@ class utils:
 
         Y_pred = self.cvdrisk_regr.predict(XSA)
         # print('Y_pred.shape: ', Y_pred.shape)
-        y_pred = 1/(1+np.exp(-Y_pred))
+        y_pred = 1.0/(1.0+np.exp(-Y_pred))
 
         for i in range(self.X.shape[0]):
             # x = self.X[i]
@@ -466,13 +480,11 @@ class utils:
             prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
             # print('prod.shape: ', prod.shape)
 
-            # compute the factor
-            # y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0][0]
             y = y_pred[i]
-            factor = 1/(1+np.exp(-y))
-
+            factor = 1.0/(1.0+np.exp(-y))
             # print('factor: ', factor)
-            u_cvd = prod * factor**2 * (1-factor)**2
+
+            u_cvd = prod * factor**2 * (1.0-factor)**2
             self.U_cvd = self.U_cvd + u_cvd
         
 
@@ -482,7 +494,8 @@ class utils:
 
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)              
+            print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)    
+
         except:
             print('cannot invert U_cvd, add an identity matrix to it')
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
@@ -554,7 +567,7 @@ class utils:
                 xsa_vec.reshape(1, -1)
                 # print('xsa_vec.shape: ', xsa_vec.shape)
                 # print('xsa_vec: ', xsa_vec)
-                y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0][0]
+                y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0]
                 # print('y_pred: ', y_pred)
                 factor = 1/(1+np.exp(-y_pred))
                 # print('factor: ', factor)
@@ -730,8 +743,8 @@ class utils:
             q_list = [q[(0,s,a)] for a in self.ACTIONS[s]]
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
-        #status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
-        status = opt_prob.solve(p.GUROBI_CMD(msg = 0)) # solve the constrained LP problem
+        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
+        # status = opt_prob.solve(p.GUROBI_CMD(msg = 0)) # solve the constrained LP problem
 
         #print(status)
         #print(p.LpStatus[status])   # The solution status
@@ -865,8 +878,8 @@ class utils:
                         opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
                         opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
                                                                                                                                                                                                                                         
-        # status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
-        status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        #status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
 
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
