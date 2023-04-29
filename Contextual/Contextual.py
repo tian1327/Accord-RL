@@ -59,6 +59,7 @@ use_gurobi = True # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
 RUN_NUMBER = 9 #Change this field to set the seed for the experiment.
 
+#--------------------------------------------------------------------------------------
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 

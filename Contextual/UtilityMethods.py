@@ -284,11 +284,11 @@ class utils:
         print('----x_train.shape', x_train.shape)
 
         # save x_train and self.cvdrisk to pickle file
-        import pickle
-        with open('output/x_train.pkl', 'wb') as f:
-            pickle.dump(x_train, f)
-        with open('output/cvdrisk.pkl', 'wb') as f:
-            pickle.dump(self.cvdrisk, f)
+        # import pickle
+        # with open('output/x_train.pkl', 'wb') as f:
+        #     pickle.dump(x_train, f)
+        # with open('output/cvdrisk.pkl', 'wb') as f:
+        #     pickle.dump(self.cvdrisk, f)
 
         # replace the training data here with data used for offline training
         # x_train = np.load('output/X.npy')
