@@ -7,7 +7,8 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
 
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi):
+    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+                INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi):
 
         self.use_gurobi = use_gurobi
         self.EPISODE_LENGTH = EPISODE_LENGTH
@@ -27,10 +28,11 @@ class utils:
         self.action_index_to_code = action_index_to_code
 
         self.X = None # observed context vectors from frist episode to current episode
-        self.sbp_dis = None # observed sbp feedback from frist episode to current episode
-        self.sbp_cont = None # observed sbp feedback from frist episode to current episode
+        self.S = None # observed state vector from frist episode to current episode
         self.A = None # observed action vector from frist episode to current episode
+        self.sbp_cont = None # observed sbp feedback from frist episode to current episode
         self.cvdrisk = None # observed cvdrisk feedback from frist episode to current episode
+
         self.cvdrisk_regr = None # regression models for cvdrisk feedback using upto current observations
         self.sbp_regr = None
 
@@ -40,9 +42,10 @@ class utils:
         self.C2 = 0.02
         self.C3 = 0.25
         self.CONTEXT_VEC_LENGTH = CONTEXT_VEC_LENGTH
+        self.STATE_CODE_LENGTH = CONTEXT_VEC_LENGTH
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
         self.U_sbp =  np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
-        self.U_cvd = np.zeros((CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+1+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, +1 for the sbp_discrete
+        self.U_cvd = np.zeros((CONTEXT_VEC_LENGTH+STATE_CODE_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+STATE_CODE_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, 
         self.U_xsa_prod_dict = dict() # trade memory for speed
 
         # print('Actions: ', ACTIONS)
@@ -137,6 +140,9 @@ class utils:
 
     # calculate the true reward and cost for each state-action pair using the context vector and offline R and C models
     def calculate_true_R_C(self, context_vec):
+        # print('\ncontext_vec: ', context_vec)
+        # print('self.state_index_to_code: ', self.state_index_to_code)
+        # print('self.action_index_to_code: ', self.action_index_to_code)
 
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
@@ -148,11 +154,17 @@ class utils:
             
                 # concatenate state and action code to the back of context vector
                 R_input = np.concatenate((context_vec, np.array(state_code_list), np.array(action_code_list)), axis=0)
-                # print('R_input.shape ', R_input.shape)
-                # print('R_input: ', R_input)
+                # print('\n---s: ', s, 'a: ', a)
+                # print('---np.array(state_code_list):', np.array(state_code_list))
+                # print('---np.array(action_code_list):', np.array(action_code_list))
+                # print('---R_input.shape ', R_input.shape)
+                # print('---R_input: ', R_input)
+
                 y_pred = self.R_model.predict(R_input.reshape(1, -1))   
-                # print('R_input: ', R_input, 'y_pred: ', y_pred)
+                # print('---y_pred: ', y_pred)
                 reward = 1.0 /(1.0+np.exp(-y_pred))
+                # print('---reward: ', reward)
+
                 self.R[s][a] = reward
 
                 self.R_y_pred[s][a] = y_pred
@@ -162,19 +174,28 @@ class utils:
                 self.C[s][a] = self.C_model.predict(C_input.reshape(1, -1))
 
                 # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
-                
-    def add_ep_rewards_costs(self, ep_sbp_discrete, ep_sbp_cont, ep_action_code, ep_cvdrisk):
+
+            
+
+    def add_ep_rewards_costs(self, ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_cvdrisk):
+        
+        # return if no experience
         if len(ep_action_code) == 0:
             return
         
-        assert len(ep_sbp_discrete) == len(ep_action_code)
+        assert len(ep_state_code) == len(ep_action_code)
 
-        ep_length = len(ep_sbp_discrete)
+        ep_length = len(ep_state_code)
+        x_matrix = np.tile(ep_context_vec, (ep_length, 1)) # stack contect_vector vertically for numebr of steps in the episode
 
-        x = np.tile(self.CONTEXT_VECTOR, (ep_length, 1)) # stack contect_vector vertically for numebr of steps in the episode
-        sbp_fb_discrete =  np.array(ep_sbp_discrete).reshape(-1, 1) # make a column vector
-        sbp_fb_cont =  np.array(ep_sbp_cont).reshape(-1, 1) # make a column vector
-        cvd = np.array(ep_cvdrisk).reshape(-1, 1) # make a column vector
+        # build the state matrix from the list of state code, if the state code is 1010, then the action matrix has a row of [1, 0, 1, 0]
+        state_vector_list = []
+        for i in range(ep_length):
+            state_code = ep_state_code[i]
+            state_vector = [int(x) for x in list(state_code)]
+            state_vector_list.append(state_vector)
+        
+        state_matrix = np.array(state_vector_list)        
 
         # build the action matrix from the list of action code, if the action code is 1010, then the action matrix has a row of [1, 0, 1, 0]
         action_vector_list = []
@@ -185,30 +206,47 @@ class utils:
         
         action_matrix = np.array(action_vector_list)
         
+        sbp_fb_cont =  np.array(ep_sbp_cont).reshape(-1, 1) # make a column vector
+        cvd = np.array(ep_cvdrisk).reshape(-1, 1) # make a column vector
+
         if self.episode == 1: # only 1 episode so far
             
-            self.X = x
-            self.sbp_dis = sbp_fb_discrete
-            self.sbp_cont = sbp_fb_cont
-            self.cvdrisk = cvd
+            self.X = x_matrix
+            self.S = state_matrix
             self.A = action_matrix
+            self.sbp_cont = sbp_fb_cont
+            self.cvdrisk = cvd            
 
         else: # stack the new episode to the history
-            # print('self.episode: ', self.episode)
-            # print('len(x): ', len(x))
-            # print('len(self.X): ', len(self.X))
-            self.X = np.concatenate((self.X, x), axis=0)
-            self.sbp_dis = np.concatenate((self.sbp_dis, sbp_fb_discrete), axis=0)
+            self.X = np.concatenate((self.X, x_matrix), axis=0)
+            self.S = np.concatenate((self.S, state_matrix), axis=0)
+            self.A = np.concatenate((self.A, action_matrix), axis=0)
             self.sbp_cont = np.concatenate((self.sbp_cont, sbp_fb_cont), axis=0)
             self.cvdrisk = np.concatenate((self.cvdrisk, cvd), axis=0)
-            self.A = np.concatenate((self.A, action_matrix), axis=0)
+            
+        # print('slef.X.shape: ', self.X.shape)
+        # print('self.X: \n', self.X)
+        # print('slef.S.shape: ', self.S.shape)
+        # print('self.S: \n', self.S)
+        # print('slef.A.shape: ', self.A.shape)
+        # print('self.A: \n', self.A)
+        # print('self.sbp_cont.shape: ', self.sbp_cont.shape)
+        # print('self.sbp_cont: \n', self.sbp_cont)
+        # print('self.cvdrisk.shape: ', self.cvdrisk.shape)
+        # print('self.cvdrisk: \n', self.cvdrisk)
+        
 
-    def make_x_a_vector(self, context_vec, current_sbp_discrete, action_idx):
+    def make_x_a_vector(self, context_vec, state_idx, action_idx):
 
         # reshape the context vector to a column vector
         context_vec = context_vec.reshape(-1, 1)
         # print("context_vec.shape =", context_vec.shape)
         # print("context_vec =", context_vec)
+
+        # transform the state to a column vector
+        state_code = self.state_index_to_code[state_idx]
+        state_code_list = [int(x) for x in list(state_code)]
+        state_vec = np.array(state_code_list).reshape(-1, 1)
 
         # transform the action to a column vector
         action_code = self.action_index_to_code[action_idx]
@@ -219,27 +257,19 @@ class utils:
         # print("action_vec.shape =", action_vec.shape)
 
         # stack the context vector and action vector to form the design vector
-        sbp_xa_vec = np.vstack((context_vec, action_vec))
+        xa_vec = np.vstack((context_vec, action_vec))
         # print("sbp_xa_vec.shape =", sbp_xa_vec.shape)
 
-        # print('make_x_a_vector:')
-        # print('current_sb_discrete =', current_sbp_discrete)
-        # print('type(current_sb_discrete) =', type(current_sbp_discrete))
-
-        # transform the sbp_dis_vec into a vector
-        sbp_dis_vec = np.array(current_sbp_discrete).reshape(-1, 1)
-        # sbp_dis_vec = np.array(current_sbp_discrete)
 
         # print('context_vec= ', context_vec)
-        # print('sbp_dis_vec= ', sbp_dis_vec)
         # print('action_vec= ', action_vec)
 
-        cvd_xsa_vec = np.vstack((context_vec, sbp_dis_vec, action_vec))
+        xsa_vec = np.vstack((context_vec, state_vec, action_vec))
 
         # print("cvd_xsa_vec.shape =", cvd_xsa_vec.shape)
         # print("cvd_xsa_vec =", cvd_xsa_vec)
 
-        return sbp_xa_vec, cvd_xsa_vec
+        return xa_vec, xsa_vec
 
 
 
@@ -249,10 +279,16 @@ class utils:
         if episode == 0:
             return (0, 0)
         
-        #---------run logistic regression to estimate the CVDRisk feedback, get \theta r
+        #---------run logistic/linear regression to estimate the CVDRisk feedback, get \theta r
+        x_train = np.concatenate((self.X, self.S, self.A), axis=1)
+        print('----x_train.shape', x_train.shape)
 
-        x_train = np.concatenate((self.X, self.sbp_dis, self.A), axis=1)
-        # print('----x_train.shape', x_train.shape)
+        # save x_train and self.cvdrisk to pickle file
+        import pickle
+        with open('output/x_train.pkl', 'wb') as f:
+            pickle.dump(x_train, f)
+        with open('output/cvdrisk.pkl', 'wb') as f:
+            pickle.dump(self.cvdrisk, f)
 
         # replace the training data here with data used for offline training
         # x_train = np.load('output/X.npy')
@@ -299,33 +335,6 @@ class utils:
         print('+++SBP RMSE = ', sbp_rmse)
         self.sbp_regr = sbp_regr
 
-        #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
-        for s in range(self.N_STATES):
-            for a in self.ACTIONS[s]:
-                state_code = self.state_index_to_code[s]
-                action_code = self.action_index_to_code[a]
-                # convert state and action code digit by digit to a list of 0 and 1
-                state_code_list = [int(x) for x in list(state_code)]
-                action_code_list = [int(x) for x in list(action_code)]
-                # concatenate state and action code to the back of context vector
-                R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
-                # print('R_input: ', R_input)
-                # print('R_input.shape: ', R_input.shape)
-
-                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
-                # print('y_pred: ', y_pred)
-
-                reward = 1/(1+np.exp(-y_pred))
-                self.R_hat[s][a] = reward
-
-                C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
-                cost = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
-                self.C_hat[s][a] = cost
-                # print('cost: ', cost)
-                # print('cost.shape: ', cost.shape)
-                # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
-                # stop        
-
         #------------ calculate the l2norm of the difference between the weights of true model and estimated model
         
         # get the weights of self.R_model, which is a linear regression model
@@ -368,15 +377,47 @@ class utils:
         # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
         C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
 
-        print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))
+        print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))        
 
+        # if self.episode == 2:
+        #     stop 
+
+        #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                state_code = self.state_index_to_code[s]
+                action_code = self.action_index_to_code[a]
+
+                # convert state and action code digit by digit to a list of 0 and 1
+                state_code_list = [int(x) for x in list(state_code)]
+                action_code_list = [int(x) for x in list(action_code)]
+                # concatenate state and action code to the back of context vector
+                R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
+                # print('R_input: ', R_input)
+                # print('R_input.shape: ', R_input.shape)
+
+                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
+                # print('y_pred: ', y_pred)
+
+                reward = 1/(1+np.exp(-y_pred))
+                self.R_hat[s][a] = reward
+
+                C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
+                cost = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
+                self.C_hat[s][a] = cost
+                # print('cost: ', cost)
+                # print('cost.shape: ', cost.shape)
+                # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
+                # stop        
 
         return (R_est_error, C_est_error)
 
-    def add_design_vector(self, sbp_xa_vec, cvd_xsa_vec):
+
+    def add_design_vector(self, sbp_xa_vec):
         
         #------- for self.U_sbp
         design_vector = sbp_xa_vec
+
         # miltiply design_vector by its transpose
         design_vector_transpose = np.transpose(design_vector)
         product = np.matmul(design_vector, design_vector_transpose)
@@ -390,12 +431,12 @@ class utils:
         # instead we do this in the compute_confidence_interval function
 
 
-
     def update_CONSTRAINT(self, new_CONSTRAINT):
         self.CONSTRAINT = new_CONSTRAINT
 
-    def step(self,s, a, h):  # take a step in the environment
+    def step(self, s, a, h):  # take a step in the environment
         # h is not used here
+
         probs = np.zeros((self.N_STATES))
         for next_s in range(self.N_STATES):
             probs[next_s] = self.P[s][a][next_s]
@@ -410,11 +451,14 @@ class utils:
         obs_reward = 1.0 /(1.0+np.exp(-y_pred + noise)) # with noises added
         rew = obs_reward
         # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
+        # print('s: ', s, 'a: ', a, 'rew: ', rew, 'self.R[s][a]: ', self.R[s][a])
+        # print('self.R[s][a]: ', self.R[s][a])
 
         cost = self.C[s][a]
         #cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
 
         return next_state, rew, cost
+
 
     def update_mu(self, init_state):
         self.mu = np.zeros(self.N_STATES)
@@ -463,7 +507,7 @@ class utils:
         # reset the self.U_cvd
         self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH))
 
-        XSA = np.concatenate((self.X, self.sbp_dis, self.A), axis=1)
+        XSA = np.concatenate((self.X, self.S, self.A), axis=1)
         # print('XSA.shape: ', XSA.shape)
 
         Y_pred = self.cvdrisk_regr.predict(XSA)
@@ -547,8 +591,7 @@ class utils:
                         # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
 
                 #---------- compute the confidence intervals for the SBP_feedback
-                state_vec = int(self.state_index_to_code[s]) #!!!!!! pay attention to the state vector
-                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, state_vec, a)
+                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, s, a)
 
                 xa_transpose = np.transpose(xa_vec)
                
@@ -566,7 +609,7 @@ class utils:
                 # print('xsa_vec: ', xsa_vec)
                 y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0]
                 # print('y_pred: ', y_pred)
-                factor = 1/(1+np.exp(-y_pred))
+                factor = 1.0/(1.0+np.exp(-y_pred))
                 # print('factor: ', factor)
                 xsa = xsa_vec * factor**2 * (1-factor)**2
                 xsa_transpose = np.transpose(xsa)
@@ -580,6 +623,7 @@ class utils:
         print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
         return min_eigenvalue_cvd, min_eigenvalue_sbp
+
 
     # update the empirical/estimated model based on the counters every episode
     def update_empirical_model(self, ep): 
