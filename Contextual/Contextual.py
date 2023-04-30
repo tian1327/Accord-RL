@@ -51,13 +51,16 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-alpha_k = 1e4
-sample_data = False # whether to sample data from the dataset or randomly generate data
-random_action = True # whether to use random action or use the optimal action
-use_gurobi = True # whether to use gurobi to solve the optimization problem
+alpha_k = 1e5
+sample_data = True # whether to sample data from the dataset or randomly generate data
+random_action = False # whether to use random action or use the optimal action
+RUN_NUMBER = 12 #Change this field to set the seed for the experiment.
 
+use_gurobi = True # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
-RUN_NUMBER = 9 #Change this field to set the seed for the experiment.
+
+print('sample_data =', sample_data)
+print('random_action =', random_action)
 
 #--------------------------------------------------------------------------------------
 random.seed(RUN_NUMBER)
@@ -84,7 +87,7 @@ C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
 
 # Cb = cost_b[0, 0]
 Cb = Cb
-Cb = 150
+#Cb = 150
 
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
@@ -94,8 +97,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-K0 = 0 # no baseline
-# K0 = 100 # warm up episodes for random feature and random action
+#K0 = 0 # no baseline
+#K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
 
 print()
 print("alpha_k =", alpha_k)
@@ -205,9 +208,12 @@ for sim in range(NUMBER_SIMULATIONS):
             R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
             min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
-                       
-            # pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random()
+
+            if random_action:
+                pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
+            else:
+                pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            
             t2 = time.time()
             dtime = t2 - t1
 
@@ -302,7 +308,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # pi_k = None
         # q_k = None
         # dump results out every x episodes
-        if episode != 0 and episode%200== 0:
+        if episode != 0 and episode%500== 0:
 
             filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
