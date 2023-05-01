@@ -54,7 +54,7 @@ NUMBER_EPISODES = 1e6
 alpha_k = 1e5
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-RUN_NUMBER = 12 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 13 #Change this field to set the seed for the experiment.
 
 use_gurobi = True # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
@@ -97,7 +97,7 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-#K0 = 0 # no baseline
+K0 = -1 # no baseline
 #K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
 
 print()
@@ -147,9 +147,7 @@ for sim in range(NUMBER_SIMULATIONS):
     min_eign_cvd_list = []
     min_eign_sbp_list = []
 
-    #first_infeasible = True
-    #found_optimal = False
-
+    select_baseline_policy_ct = 0
     episode = 0
     while episode < NUMBER_EPISODES:
 
@@ -218,23 +216,16 @@ for sim in range(NUMBER_SIMULATIONS):
             dtime = t2 - t1
 
             if log != 'Optimal':
-                print('+++++Infeasible solution in Extended LP, continue to the next patient')
-                continue
+                #print('+++++Infeasible solution in Extended LP, continue to the next patient')
+                #continue
 
-            # if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
-            #     pi_k = pi_b
-            #     val_k = val_b
-            #     cost_k = cost_b
-            #     q_k = q_b
-            #     if first_infeasible:
-            #         print('\nlog:', log)
-            #         first_infeasible = False
-            # else:
-            #     if not found_optimal:
-            #         print('\nlog:', log)
-            #         print('In episode', episode, 'found optimal policy')
-            #         print('k0 should be at least', episode)
-            #         found_optimal = True
+                print('+++++Infeasible solution in Extended LP, select the baseline policy instead')
+                select_baseline_policy_ct += 1
+
+                pi_k = pi_b
+                val_k = val_b
+                cost_k = cost_b
+                q_k = q_b
         
         R_est_err.append(R_est_error)
         C_est_err.append(C_est_error)
@@ -256,8 +247,9 @@ for sim in range(NUMBER_SIMULATIONS):
             if cost_k[s_idx_init, 0] > CONSTRAINT:
                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
 
-        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}\n'.format(
-              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))
+        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, Infeas = {}, Infeas in EXLP = {}, Time = {:.2f}\n'.format(
+              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], 
+              NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))

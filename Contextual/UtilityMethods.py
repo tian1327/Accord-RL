@@ -397,9 +397,11 @@ class utils:
                 # print('R_input.shape: ', R_input.shape)
 
                 y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
-                # print('y_pred: ', y_pred)
+                #print('y_pred: ', y_pred)
 
                 reward = 1/(1+np.exp(-y_pred))
+                #print('reward: ', reward)
+
                 self.R_hat[s][a] = reward
 
                 C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
