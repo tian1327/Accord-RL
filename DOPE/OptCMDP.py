@@ -45,7 +45,7 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = 125
+CONSTRAINT = 200
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -99,7 +99,7 @@ for sim in range(NUMBER_SIMULATIONS):
         pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) 
         t2 = time.time()
         dtime = t2 - t1
-        print("Time to solve the extended LP:", dtime)
+        #print("Time to solve the extended LP:", dtime)
         
         if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
 
