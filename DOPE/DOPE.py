@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 1e6
+NUMBER_EPISODES = 5e4
 alpha_k = 1
 use_gurobi = False
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
@@ -47,7 +47,7 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = 200
+CONSTRAINT = RUN_NUMBER # +++++
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)

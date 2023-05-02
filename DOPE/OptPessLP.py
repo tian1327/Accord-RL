@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 3e4
+NUMBER_EPISODES = 5e4
 RUN_NUMBER = 200 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
@@ -22,6 +22,7 @@ if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
+
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
@@ -46,7 +47,7 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER
+CONSTRAINT = RUN_NUMBER # +++++
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)

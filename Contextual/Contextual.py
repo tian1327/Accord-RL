@@ -50,11 +50,11 @@ def discretize_sbp(sbp):
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 1e6
+NUMBER_EPISODES = 5e4
 alpha_k = 1e5
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-RUN_NUMBER = 13 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 200 #Change this field to set the seed for the experiment.
 
 use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
@@ -91,6 +91,8 @@ C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
 
 Cb = C_b
 #Cb = 150
+
+CONSTRAINT = RUN_NUMBER # +++++
 
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
