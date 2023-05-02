@@ -14,20 +14,19 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 1e6
-RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
+NUMBER_EPISODES = 3e4
+RUN_NUMBER = 200 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
-
 
 NUMBER_SIMULATIONS = 1
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 # remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
-old_filename = 'output/OptCMDP_opsrl' + str(RUN_NUMBER) + '.pkl'
+old_filename = 'output/OptPessLP_opsrl' + str(RUN_NUMBER) + '.pkl'
 if os.path.exists(old_filename):
     os.remove(old_filename)
     print("Removed old file: ", old_filename)
@@ -47,7 +46,7 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = 200
+CONSTRAINT = RUN_NUMBER
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -65,16 +64,18 @@ ObjRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 
-L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
-L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk
-# page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
-print("L =", L)
-print("L_prime =", L_prime)
+Z = math.log(16 * N_STATES**2 * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) 
+alpha = 1.0 + N_STATES*EPISODE_LENGTH + 4.0 * EPISODE_LENGTH * (1.0 + N_STATES*EPISODE_LENGTH) / (CONSTRAINT - Cb)
+beta = 1.0 + N_STATES*EPISODE_LENGTH 
+print("Z =", Z)
+print("alpha =", alpha)
+print("beta =", beta)
+
 
 for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi, "OptCMDP") # set the utility methods for each run
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi, "OptPessLP") # set the utility methods for each run
 
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
@@ -87,60 +88,68 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_emp_reward[s][a] = 0
             ep_emp_cost[s][a] = 0
 
-    objs = [] # objective regret for current run
+    objs = []
     cons = []
     select_baseline_policy_ct = 0 
+    infeasible_elp_ct = 0
     for episode in range(NUMBER_EPISODES):
 
         util_methods.setCounts(ep_count_p, ep_count)
         util_methods.update_empirical_model(0) 
         util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-        util_methods.compute_confidence_intervals_OptCMDP(L, L_prime, 1)
-
-        t1 = time.time()
-        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++
-        t2 = time.time()
-        dtime = t2 - t1
-        #print("Time to solve the extended LP:", dtime)
-        
-        if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
-
-            # print("+++++Infeasible solution in Extended LP, select the baseline policy instead")
-            # pi_k = pi_b
-            # val_k = val_b
-            # cost_k = cost_b
-            # q_k = q_b
-            # select_baseline_policy_ct += 1
-
-            print("+++++Infeasible solution in Extended LP, select the random policy instead")
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
-            select_baseline_policy_ct += 1        
-        
+        util_methods.compute_confidence_intervals_OptPessLP(Z, alpha, beta)
+        util_methods.update_R_C_tao(alpha)
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
-        util_methods.update_mu(s_idx_init)        
+        util_methods.update_mu(s_idx_init)  
+
+        # evaluate the baseline policy under current estimated P_hat and R_Tao and C_Tao
+        q_base, value_base, cost_base  = util_methods.FiniteHorizon_Policy_evaluation(util_methods.P_hat, pi_b, util_methods.R_Tao, util_methods.C_Tao)
+
+        if cost_base[s_idx_init,0] >= (CONSTRAINT + Cb)/2: # follow the baseline policy if the cost is too high
+            pi_k = pi_b
+            q_k = q_b
+            val_k = val_b
+            cost_k = cost_b
+            select_baseline_policy_ct += 1
+            dtime = 0 
+                                            
+        else: # otherwise, solve the extended LP
+            time1 = time.time()
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++
+            dtime = time.time() - time1
+
+            if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
+
+                print("+++++Infeasible solution in Extended LP, select the baseline policy instead")
+                pi_k = pi_b
+                val_k = val_b
+                cost_k = cost_b
+                q_k = q_b
+                infeasible_elp_ct += 1             
         
         if episode == 0:
-            ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
-            ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
+            ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0])
+            ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT)
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
             if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = 1
+
         else:
-            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
-            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
+            ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0])
+            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT)
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
             if cost_k[s_idx_init, 0] > CONSTRAINT:
-                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1
             else:
-                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]
+                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]       
 
-        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, #Select_baseline = {}, Time = {:.2f}'.format(
-              episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime))
+        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, #Select_baseline = {}, #Infeasible_ELP = {}, Time = {:.2f}'.format(
+              episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, infeasible_elp_ct, dtime))
 
         # reset the counters
         ep_count = np.zeros((N_STATES, N_ACTIONS))
@@ -151,7 +160,6 @@ for sim in range(NUMBER_SIMULATIONS):
             for a in range(N_ACTIONS):
                 ep_emp_reward[s][a] = 0
                 ep_emp_cost[s][a] = 0        
-        
 
         s = s_idx_init
         for h in range(EPISODE_LENGTH): # for each step in current episode
@@ -168,7 +176,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # dump results out every xxx episodes
         if episode != 0 and episode%1000== 0:
 
-            filename = 'output/OptCMDP_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/OptPessLP_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -176,7 +184,7 @@ for sim in range(NUMBER_SIMULATIONS):
             cons = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-            filename = 'output/OptCMDP_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/OptPessLP_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -188,6 +196,6 @@ ObjRegret_std = np.std(ObjRegret2, axis = 0)
 ConRegret_std = np.std(ConRegret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'output/OptCMDP_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'output/OptPessLP_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)

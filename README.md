@@ -28,7 +28,7 @@ To export current environment: `conda env export > environment.yml`
    * linear programming solver
    * update the empirical estimate of P during exploration
   
-3. Then run `python DOPE.py` to run the main DOPE algorithm:
+3. Then run `python DOPE.py` to run the main DOPE algorithm, use `python DOPE.py 1` to specify using GUROBI solver.
    * Learns the objective regrets, and constraint regrets of the learned policy
    * save `opsrl_RUNNUMBER.pkl` and `regrets_RUNNUMBER.pkl`
 
@@ -60,8 +60,18 @@ To export current environment: `conda env export > environment.yml`
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
 2. Run `python OptCMDP.py` to run the OptCMDP algorithm
-3. Should expect to see increasing Constraint Regret with episodes
+   * Similar to DOPE, but not running K0 episodes for baseline policy
+   * Choose random policy for the first episode to get started
+3. `python plot1.py output/OptCMDP_opsrl10.pkl 10000`
+   * should expect to see 0 Objective Regret and increasing Constraint Regret with episodes
 
+#### BPClass_OptPessLP
 
-#### BPClass_OptPess-LP
+1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
+2. Run `python OptPessLP.py` to run the algorithm
+   * Similar to DOPE, but select to run baseline policy based on estimated cost of baseline policy
+   * If estimated cost is too high, then run baseline, else solve the Extended LP
+   * Radius is larger, and has no tunning parameter
+3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
+   * should expect to see increasing Objective Regret with episodes, and 0 Connstraint Regret
 

@@ -16,9 +16,11 @@ start_time = time.time()
 # control parameters
 NUMBER_EPISODES = 1e6
 alpha_k = 1
-use_gurobi = True
+use_gurobi = False
 RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
 
+if len(sys.argv) > 1:
+    use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
 random.seed(RUN_NUMBER)
@@ -109,14 +111,14 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
             util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
+            util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
             dtime = 0
 
         else: # use the DOPE policy when the episode is greater than K0
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
             util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals(L, L_prime, 1)
+            util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1)
 
             t1 = time.time()
             # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)

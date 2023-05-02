@@ -56,8 +56,11 @@ sample_data = True # whether to sample data from the dataset or randomly generat
 random_action = False # whether to use random action or use the optimal action
 RUN_NUMBER = 13 #Change this field to set the seed for the experiment.
 
-use_gurobi = True # whether to use gurobi to solve the optimization problem
+use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
+
+if len(sys.argv) > 1:
+    use_gurobi = sys.argv[1]
 
 print('sample_data =', sample_data)
 print('random_action =', random_action)
