@@ -76,7 +76,7 @@ if os.path.exists(old_filename):
 with open('output/model_contextual.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
-    CONSTRAINT, Cb, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
+    CONSTRAINT, C_b, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
@@ -85,8 +85,8 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 R_model = pickle.load(open('output/CVDRisk_estimator_BP.pkl', 'rb'))
 C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
 
-# Cb = cost_b[0, 0]
-Cb = Cb
+
+Cb = C_b
 #Cb = 150
 
 print("CONSTRAINT =", CONSTRAINT)
@@ -314,7 +314,7 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_cvd_list = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-            filename = 'opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -328,6 +328,6 @@ ObjRegret_std = np.std(ObjRegret2, axis = 0)
 ConRegret_std = np.std(ConRegret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'contextual_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'output/contextual_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)

@@ -5,8 +5,10 @@ import math
 import sys
 
 class utils:
-    def __init__(self, eps, delta, M, P, R, C, INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb):
+    def __init__(self, eps, delta, M, P, R, C, INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi=False, algo='DOPE'):
 
+        self.algo = algo
+        self.use_gurobi = use_gurobi
         self.P = P.copy()
         self.R = R.copy()
         self.C = C.copy()
@@ -35,6 +37,14 @@ class utils:
         self.alpha_p = 1.0
         self.alpha_r = 0.1
         self.alpha_c = 1.0
+
+        self.alpha_p_OptCMDP = 1.0
+        self.alpha_r_OptCMDP = 0.5
+        self.alpha_c_OptCMDP = 5.0
+
+        self.alpha_p_OptPessLP = 1.0
+        self.alpha_r_OptPessLP = 1.0
+        self.alpha_c_OptPessLP = 1.0
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -111,7 +121,6 @@ class utils:
         # add some noise to the reward and cost
         rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
         cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
-        # cost = max(0, 110-SBP_feedback) + max(0, SBP_feedback-125) # the cost is the deviation
 
         return next_state, rew, cost
 
@@ -168,6 +177,42 @@ class utils:
 
                 # self.sbp_cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1)
                 self.sbp_cvdrisk_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                # print('self.sbp_cvdrisk_confidence[s][a]: ', self.sbp_cvdrisk_confidence[s][a])
+
+
+    # compute the confidence intervals beta for the transition probabilities
+    def compute_confidence_intervals_OptCMDP(self, ep, L_prime, mode): 
+                                         # ep = L
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                if self.NUMBER_OF_OCCURANCES[s][a] == 0:
+                    self.beta_prob[s][a, :] = np.ones(self.N_STATES)
+                    self.beta_prob_T[s][a] = np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a],1)) 
+                    # not sure what is beta_prob_T used for? Used in other algorithms
+
+                else:
+                    if mode == 2:
+                        self.beta_prob[s][a, :] = min(np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)*np.ones(self.N_STATES)
+                    elif mode == 3:
+                        self.beta_prob_T[s][a] = np.sqrt(ep/max(self.NUMBER_OF_OCCURANCES[s][a],1))
+                        
+                    for s_1 in range(self.N_STATES):
+                        if mode == 0:
+                            # DOPE policy, which equation? SBP, CVDRisk bound
+                            self.beta_prob[s][a,s_1] = min(np.sqrt(ep*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                           ep/(max(self.NUMBER_OF_OCCURANCES[s][a],1)), ep/(max(np.sqrt(self.NUMBER_OF_OCCURANCES[s][a]),1)), 1)
+                        
+                        elif mode == 1:
+                            # OptCMDP 
+                            self.beta_prob[s][a,s_1] = min(np.sqrt(self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                           1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)
+                    
+                    # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
+                                                    
+                # self.beta_prob_1[s][a] = max(self.beta_prob[s][a, :])
+                # self.beta_prob_2[s][a] = sum(self.beta_prob[s][a, :])
+
+                self.sbp_cvdrisk_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))                
                 # print('self.sbp_cvdrisk_confidence[s][a]: ', self.sbp_cvdrisk_confidence[s][a])
 
 
@@ -385,7 +430,21 @@ class utils:
                                                                                                                                                                           
         return opt_policy, value_of_policy, cost_of_policy, q_policy
                                                                                                                                                                                   
-                                                                                                                                                                                  
+
+    def compute_extended_LP_random(self,):
+
+        # assign uniform probability to opt_policy
+        opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]
+        for s in range(self.N_STATES):
+            for h in range(self.EPISODE_LENGTH):
+                for a in self.ACTIONS[s]:
+                    opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
+
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C)
+                                                                                                                                                                                                                                                                                                                                                  
+                                                                                                                                                                                                                                                                                                                                                  
+        return opt_policy, value_of_policy, cost_of_policy, 'Optimal', q_policy
+
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
     def compute_extended_LP(self, ep, cb):
@@ -408,59 +467,44 @@ class utils:
         z = p.LpVariable.dicts("z_var", z_keys, lowBound=0, upBound=1, cat='Continuous') 
         # why the upperbound is 1? Because the Z is essentially probability, and the probability is between 0 and 1
         # lower bound is 0, because the occupancy measure is non-negative, constraint (18e) in the paper
+
+        if self.algo == "DOPE":
+            alpha_r = self.alpha_r
+            alpha_c = self.alpha_c
+            alpha_p = self.alpha_p
+
+        elif self.algo == "OptCMDP":
+            alpha_r = self.alpha_r_OptCMDP
+            alpha_c = self.alpha_c_OptCMDP
+            alpha_p = self.alpha_p_OptCMDP
+        
+        elif self.algo == "OptPessLP":
+            alpha_r = self.alpha_r_OptPessLP
+            alpha_c = self.alpha_c_OptPessLP
+            alpha_p = self.alpha_p_OptPessLP
+        
+        else:
+            print("invalid algo")
+            sys.exit()
             
         r_k = {}
         c_k = {}
-        c_k1 = {}
-        c_k2 = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
             c_k[s] = np.zeros(l)
-            c_k1[s] = np.zeros(l)
-            c_k2[s] = np.zeros(l)
 
             for a in self.ACTIONS[s]:
-                # r_k[s][a] = self.R_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a] # double check why need to times EPISODE_LENGTH !!!!!
-                # c_k1[s][a] = self.C_hat[s][a] + self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
-                # c_k2[s][a] = self.C_hat[s][a] - self.EPISODE_LENGTH * self.sbp_cvdrisk_confidence[s][a]
+                r_k[s][a] = max(0, self.R_hat[s][a] - alpha_r * self.sbp_cvdrisk_confidence[s][a])
+                c_k[s][a] = max(0, 110-(self.C_hat[s][a] - alpha_c * self.sbp_cvdrisk_confidence[s][a])) + max(0, (self.C_hat[s][a] + alpha_c * self.sbp_cvdrisk_confidence[s][a]) - 125)
+  
 
-                # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
-                r_k[s][a] = max(0, self.R_hat[s][a] - self.alpha_r * self.sbp_cvdrisk_confidence[s][a])
-                # r_k[s][a] = max(0, self.R_hat[s][a])
-                # r_k[s][a] = self.R_hat[s][a]
-
-                c_k[s][a] = max(0, 110-(self.C_hat[s][a] - self.alpha_c * self.sbp_cvdrisk_confidence[s][a])) + max(0, (self.C_hat[s][a] + self.alpha_c * self.sbp_cvdrisk_confidence[s][a]) - 125)
-
-                # c_k1[s][a] = self.C_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # add the confidence interval to the cost to penalize the less visited state-action pair, i.e. penalize the exploration
-                # c_k2[s][a] = self.C_hat[s][a] + self.sbp_cvdrisk_confidence[s][a]
-
-                # try without adding confidence bound
-                # r_k[s][a] = self.R_hat[s][a]
-                # c_k1[s][a] = self.C_hat[s][a]
-                # print('self.R_hat[s][a] =', self.R_hat[s][a], 
-                #       'self.C_hat[s][a] =', self.C_hat[s][a],
-                #       'self.sbp_cvdrisk_confidence[s][a] =', self.sbp_cvdrisk_confidence[s][a])
-
-                # try with the true R and C
-                # r_k[s][a] = self.R[s][a]
-                # c_k1[s][a] = self.C[s][a]
-                # c_k2[s][a] = self.C[s][a]
 
         # objective function
-        # equation (18a) in the paper
         opt_prob += p.lpSum([z[(h,s,a,s_1)]*r_k[s][a] for h in range(self.EPISODE_LENGTH) 
                                                            for s in range(self.N_STATES) 
                                                            for a in self.ACTIONS[s] 
                                                            for s_1 in self.Psparse[s][a]])
-
-        # Constraints equation 18(b)                                  
-        # opt_prob += p.lpSum([z[(h,s,a,s_1)]* ( max(110-(c_k1[s][a]), 0) + 
-        #                                        max(c_k2[s][a] - 125, 0)) 
-        #                                     for h in range(self.EPISODE_LENGTH) 
-        #                                     for s in range(self.N_STATES) 
-        #                                     for a in self.ACTIONS[s] 
-        #                                     for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
 
         opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c_k[s][a]) 
                                             for h in range(self.EPISODE_LENGTH) 
@@ -473,16 +517,9 @@ class utils:
                 z_list = [z[(h,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
                 z_1_list = [z[(h-1,s_1,a_1,s)] for s_1 in range(self.N_STATES) for a_1 in self.ACTIONS[s_1] if s in self.Psparse[s_1][a_1]]
                 opt_prob += p.lpSum(z_list) - p.lpSum(z_1_list) == 0 # constraint (18c) in the paper
-
-        # print('self.mu =', self.mu)
-                                                                                                                                                                                                              
+                                                                                                                                                                                                             
         for s in range(self.N_STATES):
             q_list = [z[(0,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
-            # q_list = [z[(0,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in range(self.N_STATES)]
-            # print("s =", s)
-            # print("q_list =", q_list)
-            # print('\np.lpSum(q_list) = ', p.lpSum(q_list))
-            # print('p.lpSum(q_list) - self.mu[s] =', p.lpSum(q_list) - self.mu[s])
 
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # constraint (18d) in the paper
                                                                                                                                                                                                                       
@@ -490,16 +527,13 @@ class utils:
             for s in range(self.N_STATES):
                 for a in self.ACTIONS[s]:
                     for s_1 in self.Psparse[s][a]:
-                        # opt_prob += z[(h,s,a,s_1)] - (self.P[s][a][s_1] + 0.01 ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        # opt_prob += -z[(h,s,a,s_1)] + (self.P[s][a][s_1] - 0.01 )*  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                        
+                        opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                        opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                                                                                                                                                                                                                                    
 
-                        opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
-
-                        # opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] ) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        # opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] )* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
-                                                                                                                                                                                                                                        
-        status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        if self.use_gurobi:
+            status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+        else:
+            status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
             # print(p.LpStatus[status])
