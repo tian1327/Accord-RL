@@ -787,7 +787,7 @@ class utils:
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
         if self.use_gurobi:
-            status = opt_prob.solve(p.GUROBI_CMD(msg = 0))
+            status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.001, msg = 0))
         else:
             status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
 

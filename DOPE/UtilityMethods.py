@@ -531,7 +531,10 @@ class utils:
                         opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)                                                                                                                                                                                                                                    
 
         if self.use_gurobi:
-            status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
+            solver = p.GUROBI(msg=0)            
+            status = opt_prob.solve(solver=solver) # solve the Extended LP problem
+
+            #status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = False)) # solve the Extended LP problem
         else:
             status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
                                                                                                                                                                                                                                       

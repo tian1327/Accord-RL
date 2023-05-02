@@ -45,7 +45,7 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-# CONSTRAINT = 100
+CONSTRAINT = 200
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
