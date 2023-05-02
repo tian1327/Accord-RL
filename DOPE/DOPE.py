@@ -159,6 +159,8 @@ for sim in range(NUMBER_SIMULATIONS):
             cons.append(ConRegret2[sim, episode])
             if cost_k[0, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+            else:
+                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
 
         print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, Time = {:.2f}'.format(
               episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], dtime))

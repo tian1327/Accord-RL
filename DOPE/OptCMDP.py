@@ -114,7 +114,7 @@ for sim in range(NUMBER_SIMULATIONS):
             pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
             select_baseline_policy_ct += 1        
         
-        
+
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
@@ -134,6 +134,8 @@ for sim in range(NUMBER_SIMULATIONS):
             cons.append(ConRegret2[sim, episode])
             if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+            else:
+                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]
 
         print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, #Select_baseline = {}, Time = {:.2f}'.format(
               episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime))

@@ -60,6 +60,8 @@ To export current environment: `conda env export > environment.yml`
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
 2. Run `python OptCMDP.py` to run the OptCMDP algorithm
+3. Should expect to see increasing Constraint Regret with episodes
 
 
 #### BPClass_OptPess-LP
+
