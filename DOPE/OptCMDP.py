@@ -15,8 +15,8 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 1e6
-RUN_NUMBER = 10 #Change this field to set the seed for the experiment.
-use_gurobi = False
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
+use_gurobi = True
 
 
 
