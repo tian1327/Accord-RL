@@ -198,9 +198,9 @@ class utils:
 
                 self.cvdrisk_confidence[s][a] = alpha * np.sqrt( Z / (max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
 
-                print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
-                      ', self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a], 
-                      ', self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
+                # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
+                #       ', self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a], 
+                #       ', self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
 
 
 

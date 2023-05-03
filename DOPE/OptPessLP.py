@@ -14,7 +14,7 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 5e4
+NUMBER_EPISODES = 3e4
 RUN_NUMBER = 200 #Change this field to set the seed for the experiment.
 use_gurobi = False
 

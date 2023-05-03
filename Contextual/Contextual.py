@@ -50,7 +50,7 @@ def discretize_sbp(sbp):
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 5e4
+NUMBER_EPISODES = 3e4
 alpha_k = 1e5
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
@@ -70,7 +70,7 @@ random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 # remove old file
-old_filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
+old_filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
 if os.path.exists(old_filename):
     os.remove(old_filename)
     print("Removed old file: ", old_filename)
@@ -309,7 +309,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # dump results out every x episodes
         if episode != 0 and episode%500== 0:
 
-            filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -321,7 +321,7 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_cvd_list = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-            filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -335,6 +335,6 @@ ObjRegret_std = np.std(ObjRegret2, axis = 0)
 ConRegret_std = np.std(ConRegret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'output/contextual_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'output/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)

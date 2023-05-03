@@ -13,10 +13,10 @@ NUMBER_EPISODES_o = 5000
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
     fn = sys.argv[1]
-    NUMBER_EPISODES_o = int(sys.argv[2]) + 1
+    NUMBER_EPISODES_o = int(sys.argv[2]) 
 
 L = 1 # marker point interval
-mark_every_interval = 5000 # marker point interval
+mark_every_interval = 2000 # marker point interval
 label = fn.split('_')[0].split('/')[-1]
 
 # ----------------- Read data from file ----------------- #
@@ -85,7 +85,7 @@ axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[1].legend(loc = 'lower right',prop={'size': 13})
-#axs[1].set_ylim([-0.1e3, 5e3])
+axs[1].set_ylim([-0.1e3, 5e3])
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Constraint Regret')
 

@@ -16,7 +16,7 @@ if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[2]) + 1
 
 L = 1 # marker point interval
-mark_every_interval = 500 # marker point interval
+mark_every_interval = 2000 # marker point interval
 
 # ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -105,6 +105,7 @@ fig, axs = plt.subplots(1, 4, figsize=(18, 4))
 for ax in axs:
     ax.patch.set_facecolor("lightsteelblue")
     ax.patch.set_alpha(0.4)
+    ax.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 
 # plot the first subplot
 axs[0].plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
