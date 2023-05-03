@@ -119,7 +119,7 @@ for sim in range(NUMBER_SIMULATIONS):
                                             
         else: # otherwise, solve the extended LP
             time1 = time.time()
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++
             dtime = time.time() - time1
 
             if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that

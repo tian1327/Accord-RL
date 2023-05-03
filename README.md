@@ -60,10 +60,10 @@ To export current environment: `conda env export > environment.yml`
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
 2. Run `python OptCMDP.py` to run the OptCMDP algorithm
-   * Similar to DOPE, but not running K0 episodes for baseline policy
+   * Similar to DOPE, but not running K0 episodes for baseline policy. Instead, it solves Extended LP directly.
    * Choose random policy for the first episode to get started
 3. `python plot1.py output/OptCMDP_opsrl10.pkl 10000`
-   * should expect to see 0 Objective Regret and increasing Constraint Regret with episodes
+   * should expect to see non-zero Constraint Regret
 
 #### BPClass_OptPessLP
 
@@ -73,5 +73,5 @@ To export current environment: `conda env export > environment.yml`
    * If estimated cost is too high, then run baseline, else solve the Extended LP
    * Radius is larger, and has no tunning parameter
 3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
-   * should expect to see increasing Objective Regret with episodes, and 0 Connstraint Regret
+   * should expect to see increasing linear Objective Regret with episodes, and 0 Connstraint Regret
 

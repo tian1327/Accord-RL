@@ -164,20 +164,18 @@ class utils:
 
 
     # compute the confidence intervals beta for the transition probabilities
-    def compute_confidence_intervals_OptCMDP(self, ep, L_prime, mode): 
-                                         # ep = L
+    def compute_confidence_intervals_OptCMDP(self): 
+                                         
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 if self.NUMBER_OF_OCCURANCES[s][a] == 0:
                     self.P_confidence[s][a, :] = np.ones(self.N_STATES)
 
-                else:
-                       
+                else:                       
                     for s_1 in range(self.N_STATES):
-                        if mode == 1:
-                            # OptCMDP 
-                            self.P_confidence[s][a, s_1] = min(np.sqrt(self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
-                                                           1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)
+                        # OptCMDP 
+                        self.P_confidence[s][a, s_1] = min(np.sqrt(self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
+                                                        1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)
 
                 self.sbp_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
                 self.cvdrisk_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
@@ -432,8 +430,8 @@ class utils:
 
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
-    def compute_extended_LP(self, ep, cb):
-        # ep, cb not used here
+    def compute_extended_LP(self,):
+
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h

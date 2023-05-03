@@ -58,6 +58,7 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
+K0 = -1
 
 print()
 print("alpha_k =", alpha_k)
@@ -98,9 +99,6 @@ for sim in range(NUMBER_SIMULATIONS):
 
     objs = [] # objective regret for current run
     cons = []
-    first_infeasible = True
-    found_optimal = False
-    # for episode in tqdm(range(NUMBER_EPISODES)): # loop for episodes
     for episode in range(NUMBER_EPISODES):
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
@@ -122,25 +120,20 @@ for sim in range(NUMBER_SIMULATIONS):
 
             t1 = time.time()
             # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
-            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) 
+            pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() 
             t2 = time.time()
             dtime = t2 - t1
             # print("\nTime for extended LP = {:.2f} s".format(dtime))
             
             if log != 'Optimal':  #Added this part to resolve issues about infeasibility. Because I am not sure about the value of K0, this condition would take care of that
+                print('+++++Infeasible in Extended LP, switch to base policy')
                 pi_k = pi_b
                 val_k = val_b
                 cost_k = cost_b
                 q_k = q_b
-                if first_infeasible:
-                    print('\nlog:', log)
-                    first_infeasible = False
+
             else:
-                if not found_optimal:
-                    print('\nlog:', log)
-                    print('In episode', episode, 'found optimal policy')
-                    print('k0 should be at least', episode)
-                    found_optimal = True
+                print('+++++In episode', episode, 'found optimal policy')
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]

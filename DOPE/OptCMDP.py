@@ -95,10 +95,10 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.setCounts(ep_count_p, ep_count)
         util_methods.update_empirical_model(0) 
         util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-        util_methods.compute_confidence_intervals_OptCMDP(L, L_prime, 1)
+        util_methods.compute_confidence_intervals_OptCMDP()
 
         t1 = time.time()
-        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(0, Cb) # +++++
+        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++
         t2 = time.time()
         dtime = t2 - t1
         #print("Time to solve the extended LP:", dtime)
@@ -114,8 +114,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             print("+++++Infeasible solution in Extended LP, select the random policy instead")
             pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
-            select_baseline_policy_ct += 1        
-        
+            select_baseline_policy_ct += 1                
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
@@ -139,7 +138,7 @@ for sim in range(NUMBER_SIMULATIONS):
             else:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]
 
-        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, #Select_baseline = {}, Time = {:.2f}'.format(
+        print('Episode {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, #Infeas = {}, #Select_random_policy = {}, Time = {:.2f}'.format(
               episode, ObjRegret2[sim, episode], ConRegret2[sim, episode], NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime))
 
         # reset the counters
@@ -150,8 +149,7 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_emp_cost[s] = {}
             for a in range(N_ACTIONS):
                 ep_emp_reward[s][a] = 0
-                ep_emp_cost[s][a] = 0        
-        
+                ep_emp_cost[s][a] = 0                
 
         s = s_idx_init
         for h in range(EPISODE_LENGTH): # for each step in current episode
