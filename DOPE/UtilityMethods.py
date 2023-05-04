@@ -43,9 +43,10 @@ class utils:
         self.alpha_c_OptCMDP = 5.0
 
         # not really changed, just for code consistency
-        self.alpha_r_OptPessLP = 1.0
-        self.alpha_c_OptPessLP = 1.0
-        self.alpha_p_OptPessLP = 1.0
+        self.alpha_p_OptPessLP = 1.0        
+        self.alpha_r_OptPessLP = 0.01
+        self.alpha_c_OptPessLP = 0.1
+
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -190,7 +191,7 @@ class utils:
 
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
-                self.P_confidence[s][a, :] = np.sqrt(Z/max(self.NUMBER_OF_OCCURANCES[s][a],1))                                                                       
+                self.P_confidence[s][a, :] = min(np.sqrt(Z/max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1.0)                
 
                 self.sbp_confidence[s][a] = beta * np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))) 
 
@@ -237,8 +238,8 @@ class utils:
       
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
-                self.R_Tao[s][a] = self.R_hat[s][a] + self.cvdrisk_confidence[s][a]
-                self.C_Tao[s][a] = self.C_hat[s][a] + self.sbp_confidence[s][a]
+                self.R_Tao[s][a] = self.R_hat[s][a] + self.alpha_r_OptPessLP * self.cvdrisk_confidence[s][a]
+                self.C_Tao[s][a] = self.C_hat[s][a] + self.alpha_c_OptPessLP * self.sbp_confidence[s][a]
 
 
     def compute_opt_LP_Unconstrained(self, ep):
