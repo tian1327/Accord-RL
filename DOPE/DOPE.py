@@ -14,8 +14,8 @@ from tqdm import tqdm
 start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 3e4
-alpha_k = 1
+NUMBER_EPISODES = 3e5
+alpha_k = 10
 use_gurobi = False
 RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 
@@ -58,7 +58,7 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-K0 = -1
+#K0 = -1
 
 print()
 print("alpha_k =", alpha_k)
