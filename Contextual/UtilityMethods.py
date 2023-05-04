@@ -281,7 +281,7 @@ class utils:
         
         #---------run logistic/linear regression to estimate the CVDRisk feedback, get \theta r
         x_train = np.concatenate((self.X, self.S, self.A), axis=1)
-        print('----x_train.shape', x_train.shape)
+        # print('----x_train.shape', x_train.shape)
 
         # save x_train and self.cvdrisk to pickle file
         # import pickle
@@ -303,14 +303,14 @@ class utils:
         cvd_regr = LinearRegression()
         cvd_regr.fit(x_train, y_train)
         cvd_regr.score(x_train, y_train)
-        print('+++cvd_regr.score(x_train, y_train) =', cvd_regr.score(x_train, y_train))
+        # print('+++cvd_regr.score(x_train, y_train) =', cvd_regr.score(x_train, y_train))
 
         y_pred = cvd_regr.predict(x_train)
         y_pred_transformed = 1.0/(1.0+np.exp(-y_pred))
         mse = mean_squared_error(y, y_pred_transformed)
         cvd_rmse = np.sqrt(mse)        
         self.cvdrisk_regr = cvd_regr
-        print('+++cvd_rmse =', cvd_rmse)
+        # print('+++cvd_rmse =', cvd_rmse)
         
 
         #---------run linear regression to estimate the deviation from the SBP_feedback, get \theta c
@@ -328,11 +328,11 @@ class utils:
         sbp_regr = LinearRegression()
         sbp_regr.fit(x_train, y_train)
         sbp_regr.score(x_train, y_train)
-        print('+++sbp_regr.score(x_train, y_train) =', sbp_regr.score(x_train, y_train))
+        # print('+++sbp_regr.score(x_train, y_train) =', sbp_regr.score(x_train, y_train))
         y_pred = sbp_regr.predict(x_train)
         mse = mean_squared_error(y_train, y_pred)
         sbp_rmse = np.sqrt(mse)
-        print('+++SBP RMSE = ', sbp_rmse)
+        # print('+++SBP RMSE = ', sbp_rmse)
         self.sbp_regr = sbp_regr
 
         #------------ calculate the l2norm of the difference between the weights of true model and estimated model
@@ -341,9 +341,9 @@ class utils:
         R_model_weights = list(self.R_model.coef_)
         # print('R_model_weights: ', R_model_weights)
         R_model_intercept = [self.R_model.intercept_]
-        print('+++R_model_intercept: ', R_model_intercept)
+        # print('+++R_model_intercept: ', R_model_intercept)
         R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
-        print('+++R_model_wt_vec: ', R_model_wt_vec)
+        # print('+++R_model_wt_vec: ', R_model_wt_vec)
         #print('type(R_model_wt_vec): ', type(R_model_wt_vec))
         
         # get the weights of self.cvdrisk_regr, which is a linear regression model
@@ -351,10 +351,10 @@ class utils:
         # print('+++R_hat_weights: ', R_hat_weights)
         #print('type(R_hat_weights): ', type(R_hat_weights))
         R_hat_intercept = [self.cvdrisk_regr.intercept_]
-        print('+++R_hat_intercept: ', R_hat_intercept)
+        # print('+++R_hat_intercept: ', R_hat_intercept)
         #print('type(R_hat_intercept): ', type(R_hat_intercept))
         R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
-        print('+++R_hat_wt_vec: ', R_hat_wt_vec)
+        # print('+++R_hat_wt_vec: ', R_hat_wt_vec)
         #print('type(R_hat_wt_vec): ', type(R_hat_wt_vec))
 
         # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
@@ -363,21 +363,21 @@ class utils:
         # get the weights of self.C_model, which is a linear regression model
         C_model_weights = list(self.C_model.coef_)
         C_model_intercept = [self.C_model.intercept_]
-        print('+++C_model_intercept: ', C_model_intercept)
+        # print('+++C_model_intercept: ', C_model_intercept)
         C_model_wt_vec = np.array(C_model_weights + C_model_intercept)
-        print('+++C_model_wt_vec: ', C_model_wt_vec)
+        # print('+++C_model_wt_vec: ', C_model_wt_vec)
 
         # get the weights of self.sbp_regr, which is a linear regression model
         C_hat_weights = self.sbp_regr.coef_.tolist()
         C_hat_intercept = [self.sbp_regr.intercept_]
-        print('+++C_hat_intercept: ', C_hat_intercept)
+        # print('+++C_hat_intercept: ', C_hat_intercept)
         C_hat_wt_vec = np.array(C_hat_weights + C_hat_intercept)
-        print('+++C_hat_wt_vec: ', C_hat_wt_vec)
+        # print('+++C_hat_wt_vec: ', C_hat_wt_vec)
 
         # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
         C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
 
-        print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))        
+        # print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))        
 
         # if self.episode == 2:
         #     stop 
@@ -537,25 +537,25 @@ class utils:
 
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)    
+            # print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)    
 
         except:
             print('cannot invert U_cvd, add an identity matrix to it')
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
+            # print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
 
             self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
+            # print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
 
         # calculate the end_term 4 *hr/sqrt(t)
         hr = self.C2* np.sqrt(9+1+4)
         end_term = 4 * hr / np.sqrt(self.episode)
-        print('end_term: ', end_term) # 4
+        # print('end_term: ', end_term) # 4
 
         # ----------------- get U_sbp_inverse -----------------
 
@@ -565,19 +565,19 @@ class utils:
 
             eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
             min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            print("Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)                    
+            # print("Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)                    
         except:
             print('cannot invert U_sbp, add an identity matrix to it')
             eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
             min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)   
+            # print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)   
 
             self.U_sbp = self.U_sbp + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
             U_sbp_inverse = np.linalg.inv(self.U_sbp)
 
             eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
             min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
+            # print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
     
 
         for s in range(self.N_STATES):
@@ -621,8 +621,8 @@ class utils:
                 self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * np.sqrt(prod) + end_term
                 # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
         
-        print('self.sbp_confidence[1][1]: ', self.sbp_confidence[1][1])
-        print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
+        # print('self.sbp_confidence[1][1]: ', self.sbp_confidence[1][1])
+        # print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
         return min_eigenvalue_cvd, min_eigenvalue_sbp
 

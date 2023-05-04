@@ -170,7 +170,7 @@ for sim in range(NUMBER_SIMULATIONS):
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
-        print('\ns_code =', s_code, ', s_idx_init =', s_idx_init)
+        # print('\ns_code =', s_code, ', s_idx_init =', s_idx_init)
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
@@ -296,12 +296,12 @@ for sim in range(NUMBER_SIMULATIONS):
             # sbp_fb_dis = discretize_sbp(cost)
             #s = sbp_fb_dis # use the sbp_fb_dis as the next state
         
-        print('a_list = ', a_list)
-        print('context_vec = ', context_vec)
-        print('ep_action_code = ', ep_action_code)
-        print('ep_state_code = ', ep_state_code)
-        print('ep_sbp_cont = ', ep_sbp_cont)
-        print('ep_cvdrisk = ', ep_cvdrisk)
+        # print('a_list = ', a_list)
+        # print('context_vec = ', context_vec)
+        # print('ep_action_code = ', ep_action_code)
+        # print('ep_state_code = ', ep_state_code)
+        # print('ep_sbp_cont = ', ep_sbp_cont)
+        # print('ep_cvdrisk = ', ep_cvdrisk)
 
 
         # pi_k = None
