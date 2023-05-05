@@ -42,9 +42,8 @@ class utils:
         self.alpha_r_OptCMDP = 1.0
         self.alpha_c_OptCMDP = 10.0
 
-        # not really changed, just for code consistency
         self.alpha_p_OptPessLP = 1.0        
-        self.alpha_r_OptPessLP = 0.01
+        self.alpha_r_OptPessLP = 1.0
         self.alpha_c_OptPessLP = 0.05
 
 
@@ -195,7 +194,7 @@ class utils:
 
                 self.sbp_confidence[s][a] = beta * np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))) 
 
-                self.cvdrisk_confidence[s][a] = alpha * np.sqrt( Z / (max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.cvdrisk_confidence[s][a] = min(alpha * np.sqrt( Z / (max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
 
                 # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
                 #       ', self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a], 

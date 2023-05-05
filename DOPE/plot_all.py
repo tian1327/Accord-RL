@@ -20,11 +20,15 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
         f = open(filename, 'rb')
         objs = []
         cons = []
+
         j = 0
         while 1:
             try:
                 j += 1
-                [NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+                if label == 'CONTEXTUAL':
+                    [R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+                else:
+                    [NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 objs.append(ObjRegret)
                 cons.append(ConRegret)
 
@@ -45,6 +49,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
     con_opsrl_mean = np.mean(con_opsrl, axis = 0)
     con_opsrl_std = np.std(con_opsrl, axis = 0)
 
+    data = {}
     data['obj_opsrl_mean'] = obj_opsrl_mean
     data['obj_opsrl_std'] = obj_opsrl_std
     data['con_opsrl_mean'] = con_opsrl_mean
@@ -59,8 +64,7 @@ NUMBER_EPISODES_o = 5000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
-    fn = sys.argv[1]
-    NUMBER_EPISODES_o = int(sys.argv[2]) 
+    NUMBER_EPISODES_o = int(sys.argv[1]) 
 
 L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
@@ -74,6 +78,7 @@ fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
 data_list = []
 label_list = []
 color_list = ['red', 'blue', 'green', 'brown']
+marker_list = ['D', 'o', 's', 'v']
 for fn in fn_list:
     data, label = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
 
@@ -102,15 +107,15 @@ for ax in axs:
     ax.patch.set_alpha(0.4)
 
 # plot the first subplot
-for data, label, clr in zip(data_list, label_list, color_list):
+for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list):
     obj_opsrl_mean = data['obj_opsrl_mean']
     con_opsrl_mean = data['con_opsrl_mean']
-    axs[0].plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
-    axs[1].plot(x_o, con_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[0].plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[1].plot(x_o, con_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
 
 axs[0].grid()
 axs[0].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs[0].legend(loc = 'lower right', prop={'size': 13})
+axs[0].legend(loc = 'upper left', prop={'size': 13})
 axs[0].set_xlabel('Episode')
 axs[0].set_ylabel('Objective Regret')
 
@@ -118,12 +123,12 @@ axs[0].set_ylabel('Objective Regret')
 # axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs[1].legend(loc = 'lower right',prop={'size': 13})
-axs[1].set_ylim([-0.1e3, 5e3])
+axs[1].legend(loc = 'center right',prop={'size': 13})
+#axs[1].set_ylim([-0.1e3, 5e3])
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/plot_comprison.pdf")
+plt.savefig("output/plot_comparison.pdf")
 plt.show()
