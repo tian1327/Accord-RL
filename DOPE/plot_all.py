@@ -66,13 +66,14 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output/CONTEXTUAL_opsrl200.pkl',
-           'output/DOPE_opsrl200.pkl',
-           'output/OptPessLP_opsrl200.pkl', 
-           'output/OptCMDP_opsrl200.pkl']
+fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
+           'output/DOPE_opsrl150.pkl',
+           'output/OptPessLP_opsrl150.pkl', 
+           'output/OptCMDP_opsrl150.pkl']
 
 data_list = []
 label_list = []
+color_list = ['red', 'blue', 'green', 'brown']
 for fn in fn_list:
     data, label = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
 
@@ -101,10 +102,11 @@ for ax in axs:
     ax.patch.set_alpha(0.4)
 
 # plot the first subplot
-for data, label in zip(data_list, label_list):
+for data, label, clr in zip(data_list, label_list, color_list):
     obj_opsrl_mean = data['obj_opsrl_mean']
     con_opsrl_mean = data['con_opsrl_mean']
-    axs[0].plot(x_o, obj_opsrl_mean[::L], label = label, color='saddlebrown', alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[0].plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[1].plot(x_o, con_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker="D",markersize='5', markeredgewidth='3',markevery=mark_every_interval)
 
 axs[0].grid()
 axs[0].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
@@ -113,7 +115,7 @@ axs[0].set_xlabel('Episode')
 axs[0].set_ylabel('Objective Regret')
 
 # plot the second subplot
-axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
+# axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[1].legend(loc = 'lower right',prop={'size': 13})
@@ -123,5 +125,5 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/all_plots.pdf")
+plt.savefig("output/plot_comprison.pdf")
 plt.show()
