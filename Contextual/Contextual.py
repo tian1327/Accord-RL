@@ -54,7 +54,7 @@ NUMBER_EPISODES = 3e4
 alpha_k = 1e5
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
 
 use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1

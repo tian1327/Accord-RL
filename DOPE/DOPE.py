@@ -15,9 +15,9 @@ start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 3e5
-alpha_k = 10
+alpha_k = 0.1
 use_gurobi = False
-RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
@@ -133,7 +133,8 @@ for sim in range(NUMBER_SIMULATIONS):
                 q_k = q_b
 
             else:
-                print('+++++In episode', episode, 'found optimal policy')
+                pass
+                #print('+++++In episode', episode, 'found optimal policy')
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]

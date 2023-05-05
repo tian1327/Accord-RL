@@ -39,13 +39,13 @@ class utils:
         self.alpha_c = 1.0
 
         self.alpha_p_OptCMDP = 1.0
-        self.alpha_r_OptCMDP = 0.5
-        self.alpha_c_OptCMDP = 5.0
+        self.alpha_r_OptCMDP = 1.0
+        self.alpha_c_OptCMDP = 10.0
 
         # not really changed, just for code consistency
         self.alpha_p_OptPessLP = 1.0        
         self.alpha_r_OptPessLP = 0.01
-        self.alpha_c_OptPessLP = 0.1
+        self.alpha_c_OptPessLP = 0.05
 
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
