@@ -75,3 +75,8 @@ To export current environment: `conda env export > environment.yml`
 3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
    * should expect to see increasing linear Objective Regret with episodes, and 0 Connstraint Regret
 
+
+#### BPClass Plot Regrets Comparison
+
+* All models are run for 3e4 episodes, `python plot_all.py 30000` 
+

@@ -76,14 +76,13 @@ fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
            'output/OptCMDP_opsrl150.pkl']
 
 data_list = []
-label_list = []
-color_list = ['red', 'blue', 'green', 'brown']
+label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
+color_list = ['red', 'blue', 'green', 'SaddleBrown']
 marker_list = ['D', 'o', 's', 'v']
 for fn in fn_list:
-    data, label = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
+    data, _ = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
 
     data_list.append(data)
-    label_list.append(label)
 
 print('label_list =', label_list)
 
@@ -130,5 +129,5 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/plot_comparison.pdf")
+plt.savefig("output/regrets.pdf")
 plt.show()
