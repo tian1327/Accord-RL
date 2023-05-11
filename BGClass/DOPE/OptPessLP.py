@@ -11,18 +11,15 @@ import sys
 import random
 from tqdm import tqdm
 
-start_time = time.time()
-
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 

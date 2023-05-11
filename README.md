@@ -17,6 +17,10 @@ To export current environment: `conda env export > environment.yml`
 
 
 ---
+### BPClass
+
+Codes located in`BPClass/` folder.
+
 #### BPClass_DOPE
 
 1. Run `model.ipynb` to: 
@@ -84,6 +88,11 @@ To export current environment: `conda env export > environment.yml`
 
 
 ---
+### BGClass
+
+Codes located in`BGClass/` folder.
+
+#### BGClass_Contextual
 
 #### BGClass_DOPE
 
@@ -101,16 +110,31 @@ To export current environment: `conda env export > environment.yml`
   
 3. `python DOPE.py` or `python DOPE.py 1` to specify using GUROBI solver.
 
-4. 
-
-
-#### BGClass_Contextual
-
+4. `python plot1.py output/DOPE_opsrl20.pkl 1000`
 
 #### BGClass_OptCMDP
 
+1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
+2. Run `python OptCMDP.py` to run the OptCMDP algorithm
+   * Similar to DOPE, but not running K0 episodes for baseline policy. Instead, it solves Extended LP directly.
+   * The radius calculation is different from DOPE
+   * Choose random policy for the first episode to get started
+3. `python plot1.py output/OptCMDP_opsrl10.pkl 10000`
+   * should expect to see better sublinear Objective Regret and non-zero Constraint Regret
+
 
 #### BGClass_OptPessLP
+
+1. Use the same model preparation scheme as in DOPE by running `model.ipynb`
+2. Run `python OptPessLP.py` to run the algorithm
+   * Similar to DOPE, but select to run baseline policy based on estimated cost of baseline policy
+   * If estimated cost is too high, then run baseline, else solve the Extended LP
+   * has higher pessimism (larger radius)
+   * Radius is larger, and has no tunning parameter
+3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
+   * should expect to see increasing linear Objective Regret with episodes, and 0 Connstraint Regret
+
+
 
 ---
 

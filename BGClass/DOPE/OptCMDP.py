@@ -11,16 +11,14 @@ import sys
 import random
 from tqdm import tqdm
 
-start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
-
 
 NUMBER_SIMULATIONS = 1
 random.seed(RUN_NUMBER)
@@ -56,7 +54,6 @@ print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
 print("N_STATES =", N_STATES)
 print("N_ACTIONS =", N_ACTIONS)
 
-
 NUMBER_EPISODES = int(NUMBER_EPISODES)
 NUMBER_SIMULATIONS = int(NUMBER_SIMULATIONS)
 ACTIONS = np.arange(N_ACTIONS)
@@ -64,12 +61,6 @@ ACTIONS = np.arange(N_ACTIONS)
 ObjRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
-
-L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
-L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for SBP, CVDRisk
-# page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
-print("L =", L)
-print("L_prime =", L_prime)
 
 for sim in range(NUMBER_SIMULATIONS):
 

@@ -40,7 +40,7 @@ class utils:
 
         self.alpha_p_OptCMDP = 1.0
         self.alpha_r_OptCMDP = 1.0
-        self.alpha_c_OptCMDP = 10.0
+        self.alpha_c_OptCMDP = 1.0
 
         self.alpha_p_OptPessLP = 1.0        
         self.alpha_r_OptPessLP = 1.0
@@ -569,7 +569,7 @@ class utils:
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
     
-    # this LP is incomplete for OptPessLP
+    # this LP is incomplete for OptPessLP, thus this function is not used!!!
     def compute_LP_Tao(self, ep, cb):
 
         opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) #[s,h,a]
