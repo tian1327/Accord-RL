@@ -15,15 +15,16 @@ from tqdm import tqdm
 # control parameters
 NUMBER_EPISODES = 3e4
 alpha_k = 0.01
+
 use_gurobi = False
-RUN_NUMBER = 20 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
+RUN_NUMBER = 14.5 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-random.seed(RUN_NUMBER)
-np.random.seed(RUN_NUMBER)
+random.seed(int(RUN_NUMBER))
+np.random.seed(int(RUN_NUMBER))
 
 # make the output directory if it doesn't exist
 if not os.path.exists('output'):
@@ -53,7 +54,7 @@ print('cost_b[2][0] =', cost_b[2][0])
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER # +++++
+CONSTRAINT = RUN_NUMBER# +++++
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -65,6 +66,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
 #K0 = -1
+K0 = 1000
 
 print()
 print("alpha_k =", alpha_k)
@@ -85,6 +87,9 @@ L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODE
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
 print("L =", L)
 print("L_prime =", L_prime)
+
+# pause for 5 seconds to allow the user to read the output
+time.sleep(5)
 
 for sim in range(NUMBER_SIMULATIONS):
 
@@ -147,8 +152,9 @@ for sim in range(NUMBER_SIMULATIONS):
         s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
 
-        # print('s_idx_init=', s_idx_init)
-        # print('cost_k[s_idx_init, 0]=', cost_k[s_idx_init, 0])
+        print('s_idx_init=', s_idx_init)
+        #print('cost_b[s_idx_init, 0]=', cost_b[s_idx_init, 0])
+        print('cost_k[s_idx_init, 0]=', cost_k[s_idx_init, 0])
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state

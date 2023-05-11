@@ -36,11 +36,11 @@ class utils:
         
         self.alpha_p = 1.0
         self.alpha_r = 0.1
-        self.alpha_c = 0.1
+        self.alpha_c = 0.01
 
         self.alpha_p_OptCMDP = 1.0
         self.alpha_r_OptCMDP = 1.0
-        self.alpha_c_OptCMDP = 1.0
+        self.alpha_c_OptCMDP = 0.1
 
         self.alpha_p_OptPessLP = 1.0        
         self.alpha_r_OptPessLP = 1.0

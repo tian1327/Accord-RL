@@ -14,15 +14,15 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 14.5 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-random.seed(RUN_NUMBER)
-np.random.seed(RUN_NUMBER)
+random.seed(int(RUN_NUMBER))
+np.random.seed(int(RUN_NUMBER))
 
 # remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
 old_filename = 'output/OptCMDP_opsrl' + str(RUN_NUMBER) + '.pkl'
@@ -112,6 +112,8 @@ for sim in range(NUMBER_SIMULATIONS):
         s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)        
         
+        print('s_idx_init =', s_idx_init)
+        print('cost_k[s_idx_init, 0] =', cost_k[s_idx_init, 0])
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
             ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
