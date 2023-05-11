@@ -11,13 +11,12 @@ import sys
 import random
 from tqdm import tqdm
 
-start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 3e5
-alpha_k = 0.1
+alpha_k = 0.01
 use_gurobi = False
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 20 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
@@ -25,6 +24,11 @@ if len(sys.argv) > 1:
 NUMBER_SIMULATIONS = 1
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
+
+# make the output directory if it doesn't exist
+if not os.path.exists('output'):
+    os.makedirs('output')
+    print("Created output/ directory")
 
 # remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
 old_filename = 'output/DOPE_opsrl' + str(RUN_NUMBER) + '.pkl'
@@ -43,6 +47,8 @@ with  open('output/solution.pkl', 'rb') as f:
 
 with open('output/base.pkl', 'rb') as f:
     [pi_b, val_b, cost_b, q_b] = pickle.load(f)
+
+print('cost_b[2][0] =', cost_b[2][0])
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
@@ -139,7 +145,10 @@ for sim in range(NUMBER_SIMULATIONS):
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
-        util_methods.update_mu(s_idx_init)        
+        util_methods.update_mu(s_idx_init)
+
+        # print('s_idx_init=', s_idx_init)
+        # print('cost_k[s_idx_init, 0]=', cost_k[s_idx_init, 0])
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
@@ -153,7 +162,7 @@ for sim in range(NUMBER_SIMULATIONS):
             ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[0, 0] > CONSTRAINT:
+            if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
             else:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            

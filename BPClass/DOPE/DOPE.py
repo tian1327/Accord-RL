@@ -153,7 +153,7 @@ for sim in range(NUMBER_SIMULATIONS):
             ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[0, 0] > CONSTRAINT:
+            if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
             else:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
