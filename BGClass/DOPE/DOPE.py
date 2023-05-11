@@ -14,10 +14,10 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 0.01
+alpha_k = 0.0001
 
 use_gurobi = False
-RUN_NUMBER = 14.5 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
+RUN_NUMBER = 14 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
@@ -44,12 +44,10 @@ with open('output/model.pkl', 'rb') as f:
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
-    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
+    [opt_policy_con_list, opt_value_LP_con_list, opt_cost_LP_con_list, opt_q_con_list] = pickle.load(f) 
 
 with open('output/base.pkl', 'rb') as f:
-    [pi_b, val_b, cost_b, q_b] = pickle.load(f)
-
-print('cost_b[2][0] =', cost_b[2][0])
+    [pi_b_list, val_b_list, cost_b_list, q_b_list] = pickle.load(f)
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
@@ -65,7 +63,7 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-#K0 = -1
+# K0 = -1
 K0 = 1000
 
 print()
@@ -112,6 +110,20 @@ for sim in range(NUMBER_SIMULATIONS):
     cons = []
     for episode in range(NUMBER_EPISODES):
 
+        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
+        s_idx_init = state_code_to_index[s_code]
+        util_methods.update_mu(s_idx_init)
+
+        # set corresponding base policy and optimal policy
+        pi_b = pi_b_list[s_idx_init]
+        val_b = val_b_list[s_idx_init]
+        cost_b = cost_b_list[s_idx_init]
+        q_b = q_b_list[s_idx_init]
+
+        opt_value_LP_con = opt_value_LP_con_list[s_idx_init]
+
+
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
             val_k = val_b
@@ -147,10 +159,7 @@ for sim in range(NUMBER_SIMULATIONS):
                 pass
                 #print('+++++In episode', episode, 'found optimal policy')
 
-        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
-        s_idx_init = state_code_to_index[s_code]
-        util_methods.update_mu(s_idx_init)
+
 
         print('s_idx_init=', s_idx_init)
         #print('cost_b[s_idx_init, 0]=', cost_b[s_idx_init, 0])
