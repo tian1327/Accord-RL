@@ -21,6 +21,29 @@ To export current environment: `conda env export > environment.yml`
 
 Codes located in`BPClass/` folder.
 
+#### BPClass_Contextual
+
+1. Data file used is `../data/ACCORD_BPClass_v2_merged_Contextual.csv`
+   * `create_datasets_contextual.ipynb` is copied from the scripts when processing the data, it contains some steps to prepare the data file
+   
+2. Train true model for P, R, C using all data
+   * `model_conntextual.ipynb`: 
+     * discretize the context features
+     * P is estimated the same way (empirical estimates) as DOPE, output model settings to `output/model_contextual.pkl`
+  
+   * `train_feedback_estimators.ipynb`：get the R and C offline estimators
+     * R / CVDRisk: logistic regression with (context_vector, state, action)
+     * C / SBP or Hba1c: linear regression with (context_vector, action)
+     * Offline R and C models are saved to `output/CVDRisk_estimator.pkl`, `output/A1C_feedback_estimator.pkl`
+
+3. Run `python Contextual.py 1` to run the main contextual algorithm, 1 to specify using GUROBI solver.
+   
+4. Run `python plot1.py output/opsrl150.pkl 1000` to plot all plots in the same figure, specify the filename and episodes to plot
+   
+5. `test.ipynb` is used to debug the code
+
+
+
 #### BPClass_DOPE
 
 1. Run `model.ipynb` to: 
@@ -41,25 +64,6 @@ Codes located in`BPClass/` folder.
 4. Plot the `Objective Regret` and `Constraint Regret`
    * run `python plot1.py output/DOPE_opsrl150.pkl 30000`
    * plots are in `output/` folder
-
-
-#### BPClass_Contextual
-
-1. Data file used is `../data/ACCORD_BPClass_v2_merged_Contextual.csv`
-   * `create_datasets_contextual.ipynb` is copied from the scripts when processing the data, it contains some steps to prepare the data file
-   
-2. Train true model for P, R, C using all data
-   * P is estimated the same way (empirical estimates) as DOPE, using `model_conntextual.ipynb`
-   * R / CVDRisk: logistic regression with (context_vector, state, action)
-   * C / SBP: linear regression with (context_vector, action)
-   * Get the R and C offline estimators by running `train_feedback_estimators.ipynb`
-   * Offline R and C models are saved to `output/`
-
-3. Run `python Contextual.py` to run the main contextual algorithm
-   
-4. Run `python plot1.py output/opsrl150.pkl 1000` to plot all plots in the same figure, specify the filename and episodes to plot
-   
-5. `test.ipynb` is used to debug the code
 
 
 #### BPClass_OptCMDP
@@ -93,6 +97,8 @@ Codes located in`BPClass/` folder.
 Codes located in`BGClass/` folder.
 
 #### BGClass_Contextual
+
+
 
 #### BGClass_DOPE
 
@@ -133,8 +139,6 @@ Codes located in`BGClass/` folder.
    * Radius is larger, and has no tunning parameter
 3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
    * should expect to see increasing linear Objective Regret with episodes, and 0 Connstraint Regret
-
-
 
 ---
 

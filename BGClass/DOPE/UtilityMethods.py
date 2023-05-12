@@ -342,7 +342,7 @@ class utils:
                             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) 
             
         # constraints
-        # hba1c within the range [7.0, 7.9] for all time steps
+        # hba1c within the range for all time steps
         opt_prob += p.lpSum([q[(h,s,a)] * (max(7.0-self.C[s][a], 0) + max(self.C[s][a]-7.9, 0)) 
                     for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
 

@@ -37,24 +37,23 @@ def generate_random_patient():
 
     return res
 
-def discretize_sbp(sbp):
-    if sbp < 120:
-        return 0
-    elif sbp < 140:
-        return 1
-    else:
-        return 2
+# def discretize_sbp(sbp):
+#     if sbp < 120:
+#         return 0
+#     elif sbp < 140:
+#         return 1
+#     else:
+#         return 2
 
 
 #--------------------------------------------------------------------------------------
-start_time = time.time()
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 1e5
+alpha_k = 1e5 # control K0, but not used
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
 
 use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
@@ -66,8 +65,8 @@ print('sample_data =', sample_data)
 print('random_action =', random_action)
 
 #--------------------------------------------------------------------------------------
-random.seed(RUN_NUMBER)
-np.random.seed(RUN_NUMBER)
+random.seed(int(RUN_NUMBER))
+np.random.seed(int(RUN_NUMBER))
 
 # remove old file
 old_filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
@@ -76,7 +75,7 @@ if os.path.exists(old_filename):
     print("Removed old file: ", old_filename)
 
 # Initialize:
-with open('output/model_contextual.pkl', 'rb') as f:
+with open('output/model_contextual_BG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT, C_b, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
@@ -85,8 +84,8 @@ STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
-R_model = pickle.load(open('output/CVDRisk_estimator_BP.pkl', 'rb'))
-C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
+R_model = pickle.load(open('output/CVDRisk_estimator_BG.pkl', 'rb'))
+C_model = pickle.load(open('output/A1C_feedback_estimator_BG.pkl', 'rb'))
 
 
 Cb = C_b
@@ -141,6 +140,7 @@ for sim in range(NUMBER_SIMULATIONS):
     # for logistic regression of CVDRisk_feedback and linear regression SBP_feedback
     ep_context_vec = None
     ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+    ep_hba1c_cont = [] # record the HbA1c feedback continuous for each step in a episode
     ep_state_code = []
     ep_action_code = [] # record the action code for each step in a episode
     ep_cvdrisk = [] # record the CVDRisk for each step in a episode
@@ -150,7 +150,7 @@ for sim in range(NUMBER_SIMULATIONS):
     R_est_err = []
     C_est_err = []
     min_eign_cvd_list = []
-    min_eign_sbp_list = []
+    min_eign_hba1c_list = []
 
     select_baseline_policy_ct = 0
     episode = 0
@@ -159,7 +159,7 @@ for sim in range(NUMBER_SIMULATIONS):
         if sample_data:
             # sample a patient from CONTEXT_VECTOR_dict
             patient = np.random.choice(list(CONTEXT_VECTOR_dict.keys()), 1, replace = True)[0]
-            context_vec = CONTEXT_VECTOR_dict[patient][0]
+            context_vec = CONTEXT_VECTOR_dict[patient] # we only use the context vector
         else:
             # generate a random patient
             context_vec = generate_random_patient()
@@ -196,9 +196,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
-            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
-            # R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            # util_methods.compute_confidence_intervals(L)
+            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_hba1c_cont, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
             R_est_error, C_est_error = 0, 0 
             min_eign_cvd, min_eign_sbp = 0, 0
             dtime = 0
@@ -207,9 +205,9 @@ for sim in range(NUMBER_SIMULATIONS):
             t1 = time.time() 
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
-            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
-            R_est_error, C_est_error = util_methods.run_regression_rewards_costs(episode) # update the regression models for SBP and CVDRisk
-            min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals(L)
+            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_hba1c_cont, ep_cvdrisk) # add the collected SBP and action index to the history data for regression
+            R_est_error, C_est_error = util_methods.run_regression_rewards_costs_BG(episode) # update the regression models for SBP/Hba1c and CVDRisk
+            min_eign_cvd, min_eign_hba1c = util_methods.compute_confidence_intervals_BG(L)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             if random_action:
@@ -235,7 +233,7 @@ for sim in range(NUMBER_SIMULATIONS):
         R_est_err.append(R_est_error)
         C_est_err.append(C_est_error)
         min_eign_cvd_list.append(min_eign_cvd)
-        min_eign_sbp_list.append(min_eign_sbp)
+        min_eign_hba1c_list.append(min_eign_hba1c)
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
@@ -263,6 +261,7 @@ for sim in range(NUMBER_SIMULATIONS):
         ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
         ep_context_vec = context_vec # record the context vector for the current episode
         ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+        ep_hba1c_cont = [] # record the Hba1c feedback continuous for each step in a episode
         a_list = []
         ep_action_code = [] # record the action code for each step in a episode
         ep_state_code = []
@@ -283,13 +282,14 @@ for sim in range(NUMBER_SIMULATIONS):
 
             next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
 
-            sbp_xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(ep_context_vec, s, a)
+            xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(ep_context_vec, s, a)
             
-            util_methods.add_design_vector(sbp_xa_vec)
+            util_methods.add_design_vector(xa_vec)
 
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
-            ep_sbp_cont.append(cost) 
+            ep_sbp_cont.append(0) # we are not getting SBP feedback in BGClass case 
+            ep_hba1c_cont.append(cost)
             ep_cvdrisk.append(rew)
 
             s = next_state
@@ -311,19 +311,19 @@ for sim in range(NUMBER_SIMULATIONS):
 
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
             objs = []
             cons = []
             R_est_err = []
             C_est_err = []
-            min_eign_sbp_list = []
+            min_eign_hba1c_list = []
             min_eign_cvd_list = []
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C_est_err, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
         
         episode += 1
