@@ -86,6 +86,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
+        # s_idx_init = 0 # +++++
         util_methods.update_mu(s_idx_init)    
 
         # set opt_value_LP_con corresponding to the initial state

@@ -86,8 +86,8 @@ L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODE
 print("L =", L)
 print("L_prime =", L_prime)
 
-# pause for 5 seconds to allow the user to read the output
-time.sleep(5)
+# pause for 3 seconds to allow the user to read the output
+time.sleep(3)
 
 for sim in range(NUMBER_SIMULATIONS):
 
@@ -113,6 +113,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
+        # s_idx_init = 0 # +++++
         util_methods.update_mu(s_idx_init)
 
         # set corresponding base policy and optimal policy
