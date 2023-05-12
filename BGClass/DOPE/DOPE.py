@@ -17,14 +17,14 @@ NUMBER_EPISODES = 3e4
 alpha_k = 0.002
 
 use_gurobi = False
-RUN_NUMBER = 15 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
+RUN_NUMBER = 16 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-random.seed(int(RUN_NUMBER)+10)
-np.random.seed(int(RUN_NUMBER)+10)
+random.seed(int(RUN_NUMBER))
+np.random.seed(int(RUN_NUMBER))
 
 # make the output directory if it doesn't exist
 if not os.path.exists('output'):
