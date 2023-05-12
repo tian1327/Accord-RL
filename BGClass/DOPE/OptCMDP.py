@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 14 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
