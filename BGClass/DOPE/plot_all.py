@@ -117,6 +117,7 @@ axs[0].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[0].legend(loc = 'upper left', prop={'size': 13})
 axs[0].set_xlabel('Episode')
 axs[0].set_ylabel('Objective Regret')
+#axs[0].set_ylim([-0.1e3, 5e3])
 
 # plot the second subplot
 # axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)

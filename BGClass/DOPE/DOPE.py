@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 0.0001
+alpha_k = 0.002
 
 use_gurobi = False
 RUN_NUMBER = 15 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
@@ -23,8 +23,8 @@ if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-random.seed(int(RUN_NUMBER))
-np.random.seed(int(RUN_NUMBER))
+random.seed(int(RUN_NUMBER)+10)
+np.random.seed(int(RUN_NUMBER)+10)
 
 # make the output directory if it doesn't exist
 if not os.path.exists('output'):
@@ -64,7 +64,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
 # K0 = -1
-K0 = 1500
+#K0 = 2000
 
 print()
 print("alpha_k =", alpha_k)
