@@ -38,7 +38,7 @@ Codes located in`BPClass/` folder.
 
 3. Run `python Contextual.py` or `python Contextual.py 1` to run the main contextual algorithm. Use 1 to specify using GUROBI solver.
    
-4. Run `python plot1.py output/CONTEXTUAL_opsrl15.pkl 500` to plot all plots in the same figure, specify the filename and episodes to plot
+4. Run `python plot1.py output/CONTEXTUAL_opsrl15.pkl 30000` to plot all plots in the same figure, specify the filename and episodes to plot
    
 5. `test.ipynb` is used to debug the code
 

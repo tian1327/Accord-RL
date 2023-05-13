@@ -71,9 +71,9 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = ['../Contextual/output/CONTEXTUAL_opsrl15.pkl',
-           'output/DOPE_opsrl15.pkl',
-           'output/OptPessLP_opsrl15.pkl', 
-           'output/OptCMDP_opsrl15.pkl']
+           'output/DOPE_opsrl16.pkl',
+           'output/OptPessLP_opsrl16.pkl', 
+           'output/OptCMDP_opsrl16.pkl']
 
 data_list = []
 label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
@@ -124,7 +124,7 @@ axs[0].set_ylabel('Objective Regret')
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[1].legend(loc = 'center right',prop={'size': 13})
-#axs[1].set_ylim([-0.1e3, 5e3])
+axs[1].set_ylim([-0.1e3, 1e4])
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Constraint Regret')
 
