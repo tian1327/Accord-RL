@@ -53,7 +53,7 @@ NUMBER_EPISODES = 3e4
 alpha_k = 1e5 # control K0, but not used
 sample_data = True # whether to sample data from the dataset or randomly generate data
 random_action = False # whether to use random action or use the optimal action
-RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 
 use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
@@ -78,7 +78,7 @@ if os.path.exists(old_filename):
 with open('output/model_contextual_BG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
-    CONSTRAINT, C_b, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
+    CONSTRAINT_list, C_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
@@ -88,10 +88,13 @@ R_model = pickle.load(open('output/CVDRisk_estimator_BG.pkl', 'rb'))
 C_model = pickle.load(open('output/A1C_feedback_estimator_BG.pkl', 'rb'))
 
 
+# CONSTRAINT = RUN_NUMBER # +++++
+
+CONSTRAINT = CONSTRAINT_list[2]
+C_b = C_b_list[2]
+
 Cb = C_b
 #Cb = 150
-
-CONSTRAINT = RUN_NUMBER # +++++
 
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
@@ -171,6 +174,11 @@ for sim in range(NUMBER_SIMULATIONS):
         s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
         # print('\ns_code =', s_code, ', s_idx_init =', s_idx_init)
+
+        CONSTRAINT = CONSTRAINT_list[s_idx_init]
+        Cb = C_b_list[s_idx_init]
+        util_methods.setConstraint(CONSTRAINT)
+        util_methods.setCb(Cb)        
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)

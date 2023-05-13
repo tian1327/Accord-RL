@@ -54,8 +54,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # CONSTRAINT = RUN_NUMBER# +++++
 
-CONSTRAINT = CONSTRAINT_list[1]
-C_b = C_b_list[1]
+CONSTRAINT = CONSTRAINT_list[2]
+C_b = C_b_list[2]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)

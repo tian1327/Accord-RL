@@ -137,6 +137,12 @@ class utils:
             
         # print('self.Psparse: ', self.Psparse)
     
+    def setConstraint(self, CONSTRAINT):
+        self.CONSTRAINT = CONSTRAINT
+    
+    def setCb(self, Cb):
+        self.Cb = Cb
+
     def update_episode(self, episode):
         self.episode = episode
 
