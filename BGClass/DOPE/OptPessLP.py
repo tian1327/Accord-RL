@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 15 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
@@ -31,7 +31,7 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, C_b,
+    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
@@ -43,7 +43,10 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER # +++++
+# CONSTRAINT = RUN_NUMBER # +++++
+
+CONSTRAINT = CONSTRAINT_list[2]
+C_b = C_b_list[2]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -108,7 +111,12 @@ for sim in range(NUMBER_SIMULATIONS):
         cost_b = cost_b_list[s_idx_init]
         q_b = q_b_list[s_idx_init]
 
-        opt_value_LP_con = opt_value_LP_con_list[s_idx_init]          
+        opt_value_LP_con = opt_value_LP_con_list[s_idx_init]       
+
+        CONSTRAINT = CONSTRAINT_list[s_idx_init]
+        Cb = C_b_list[s_idx_init]
+        util_methods.setConstraint(CONSTRAINT)
+        util_methods.setCb(Cb)             
 
         # evaluate the baseline policy under current estimated P_hat and R_Tao and C_Tao
         q_base, value_base, cost_base  = util_methods.FiniteHorizon_Policy_evaluation(util_methods.P_hat, pi_b, util_methods.R_Tao, util_methods.C_Tao)

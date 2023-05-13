@@ -17,7 +17,7 @@ NUMBER_EPISODES = 3e4
 alpha_k = 0.002
 
 use_gurobi = False
-RUN_NUMBER = 16 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
@@ -40,7 +40,7 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, C_b,
+    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
@@ -52,7 +52,10 @@ with open('output/base.pkl', 'rb') as f:
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER# +++++
+# CONSTRAINT = RUN_NUMBER# +++++
+
+CONSTRAINT = CONSTRAINT_list[1]
+C_b = C_b_list[1]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -111,6 +114,7 @@ for sim in range(NUMBER_SIMULATIONS):
     for episode in range(NUMBER_EPISODES):
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        # INIT_STATES_LIST = ['1', '2']
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
         # s_idx_init = 0 # +++++
@@ -124,6 +128,12 @@ for sim in range(NUMBER_SIMULATIONS):
 
         opt_value_LP_con = opt_value_LP_con_list[s_idx_init]
 
+        CONSTRAINT = CONSTRAINT_list[s_idx_init]
+        Cb = C_b_list[s_idx_init]
+
+        util_methods.setConstraint(CONSTRAINT)
+        util_methods.setCb(Cb)
+
 
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
@@ -133,7 +143,7 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
             util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
+            # util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
             dtime = 0
 
         else: # use the DOPE policy when the episode is greater than K0
