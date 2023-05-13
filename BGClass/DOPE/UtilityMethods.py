@@ -34,13 +34,14 @@ class utils:
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         
+        # DOPE parameters
         self.alpha_p = 1.0
-        self.alpha_r = 0.1
+        self.alpha_r = 1.0
         self.alpha_c = 0.1
 
         self.alpha_p_OptCMDP = 1.0
         self.alpha_r_OptCMDP = 1.0
-        self.alpha_c_OptCMDP = 0.1
+        self.alpha_c_OptCMDP = 1.0
 
         self.alpha_p_OptPessLP = 1.0        
         self.alpha_r_OptPessLP = 1.0
@@ -115,6 +116,13 @@ class utils:
         # print('self.Psparse: ', self.Psparse)
     
 
+    def setConstraint(self, CONSTRAINT):
+        self.CONSTRAINT = CONSTRAINT
+    
+    def setCb(self, cb):
+        self.cb = cb
+
+
     def step(self,s, a, h):  # take a step in the environment
         # h is not used here
         probs = np.zeros((self.N_STATES))
@@ -158,7 +166,7 @@ class utils:
                                                             14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
 
                 self.sbp_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
-                self.cvdrisk_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
 
                 # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], ', sbp_confidence: ', self.sbp_confidence[s][a], ', cvdrisk_confidence: ', self.cvdrisk_confidence[s][a])
 
@@ -178,7 +186,7 @@ class utils:
                                                         1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)
 
                 self.sbp_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
-                self.cvdrisk_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.cvdrisk_confidence[s][a] = min(np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
                 
                 # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0],
                 #       ', sbp_confidence: ', self.sbp_confidence[s][a], 
