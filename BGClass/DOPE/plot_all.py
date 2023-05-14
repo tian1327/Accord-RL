@@ -70,10 +70,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output/CONTEXTUAL_opsrl15.pkl',
-           'output/DOPE_opsrl16.pkl',
-           'output/OptPessLP_opsrl16.pkl', 
-           'output/OptCMDP_opsrl16.pkl']
+fn_list = ['../Contextual/output/CONTEXTUAL_opsrl100.pkl',
+           'output/DOPE_opsrl100.pkl',
+           'output/OptPessLP_opsrl100.pkl', 
+           'output/OptCMDP_opsrl100.pkl']
 
 data_list = []
 label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
