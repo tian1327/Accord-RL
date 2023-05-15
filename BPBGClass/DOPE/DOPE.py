@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 0.002
+alpha_k = 0.1
 
 use_gurobi = False
 RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
@@ -40,7 +40,7 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
+    [P, R, C1, C2, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
@@ -54,8 +54,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # CONSTRAINT = RUN_NUMBER# +++++
 
-CONSTRAINT = CONSTRAINT_list[2]
-C_b = C_b_list[2]
+CONSTRAINT = CONSTRAINT_list[8]
+C_b = C_b_list[8]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -89,24 +89,26 @@ L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODE
 print("L =", L)
 print("L_prime =", L_prime)
 
-# pause for 3 seconds to allow the user to read the output
-time.sleep(3)
+time.sleep(5)
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
+    util_methods = utils(EPS, DELTA, M, P, R, C1, C2, INIT_STATE_INDEX, 
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) # set the utility methods for each run
 
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
     ep_emp_reward = {} # initialize the empirical rewards and costs for each run
-    ep_emp_cost = {}
+    ep_emp_cost1 = {} # sbp
+    ep_emp_cost2 = {} # hba1c
     for s in range(N_STATES):
         ep_emp_reward[s] = {}
-        ep_emp_cost[s] = {}
+        ep_emp_cost1[s] = {}
+        ep_emp_cost2[s] = {}
         for a in range(N_ACTIONS):
             ep_emp_reward[s][a] = 0
-            ep_emp_cost[s][a] = 0
+            ep_emp_cost1[s][a] = 0
+            ep_emp_cost2[s][a] = 0
 
 
     objs = [] # objective regret for current run
@@ -142,14 +144,14 @@ for sim in range(NUMBER_SIMULATIONS):
             q_k = q_b
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
-            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
+            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost1, ep_emp_cost2) # update the empirical rewards and costs
             # util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
             dtime = 0
 
         else: # use the DOPE policy when the episode is greater than K0
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
-            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
+            util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost1, ep_emp_cost2) # update the empirical rewards and costs
             util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1)
 
             t1 = time.time()
@@ -201,21 +203,24 @@ for sim in range(NUMBER_SIMULATIONS):
         ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
         for s in range(N_STATES):
             ep_emp_reward[s] = {}
-            ep_emp_cost[s] = {}
+            ep_emp_cost1[s] = {}
+            ep_emp_cost2[s] = {}
             for a in range(N_ACTIONS):
                 ep_emp_reward[s][a] = 0
-                ep_emp_cost[s][a] = 0        
+                ep_emp_cost1[s][a] = 0        
+                ep_emp_cost2[s][a] = 0
         
         s = s_idx_init
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
 
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
-            next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
+            next_state, rew, cost1, cost2 = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
             ep_emp_reward[s][a] += rew
-            ep_emp_cost[s][a] += cost # this is the SBP feedback
+            ep_emp_cost1[s][a] += cost1 # this is the SBP feedback
+            ep_emp_cost2[s][a] += cost2 # this is the cost feedback
             s = next_state
 
         # dump results out every 50000 episodes

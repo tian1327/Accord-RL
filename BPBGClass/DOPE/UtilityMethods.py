@@ -5,13 +5,14 @@ import math
 import sys
 
 class utils:
-    def __init__(self, eps, delta, M, P, R, C, INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi=False, algo='DOPE'):
+    def __init__(self, eps, delta, M, P, R, C1, C2, INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi=False, algo='DOPE'):
 
         self.algo = algo
         self.use_gurobi = use_gurobi
         self.P = P.copy()
         self.R = R.copy()
-        self.C = C.copy()
+        self.C1 = C1.copy() # sbp feedback
+        self.C2 = C2.copy() # hba1c feedback
         self.EPISODE_LENGTH = EPISODE_LENGTH
         self.N_STATES = N_STATES
         self.N_ACTIONS = N_ACTIONS
@@ -28,24 +29,29 @@ class utils:
         #self.P_tilde = np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         
         self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.C_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C1_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C2_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.Total_emp_reward = np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.Total_emp_cost = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.Total_emp_cost1 = np.zeros((self.N_STATES,self.N_ACTIONS)) # sbp feedback
+        self.Total_emp_cost2 = np.zeros((self.N_STATES,self.N_ACTIONS)) # hba1c feedback
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         
         # DOPE parameters
         self.alpha_p = 1.0
         self.alpha_r = 1.0
-        self.alpha_c = 0.1
+        self.alpha_c1 = 1.0
+        self.alpha_c2 = 0.1
 
         self.alpha_p_OptCMDP = 1.0
         self.alpha_r_OptCMDP = 1.0
-        self.alpha_c_OptCMDP = 1.0
+        self.alpha_c1_OptCMDP = 10.0
+        self.alpha_c2_OptCMDP = 1.0
 
         self.alpha_p_OptPessLP = 1.0        
         self.alpha_r_OptPessLP = 1.0
-        self.alpha_c_OptPessLP = 0.05
+        self.alpha_c1_OptPessLP = 0.05
+        self.alpha_c2_OptPessLP = 0.05
 
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
@@ -55,7 +61,8 @@ class utils:
         self.beta_prob_2 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.beta_prob_T = {}
 
-        self.sbp_confidence = {} # this is actually the hba1c_confidence for BGClass
+        self.sbp_confidence = {} # 
+        self.hba1c_confidence = {} # 
         self.cvdrisk_confidence = {}
         self.P_confidence = {}
 
@@ -89,6 +96,7 @@ class utils:
             self.beta_prob_T[s] = np.zeros(l)
 
             self.sbp_confidence[s] = np.zeros(l)
+            self.hba1c_confidence[s] = np.zeros(l)
             self.cvdrisk_confidence[s] = np.zeros(l)
             self.P_confidence[s] = np.zeros(l)
 
@@ -132,9 +140,10 @@ class utils:
 
         # add some noise to the true reward and cost
         rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
-        cost = self.C[s][a] + np.random.normal(0, 0.1) # this is the hba1c feedback, not the deviation
+        cost1 = self.C1[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+        cost2 = self.C2[s][a] + np.random.normal(0, 0.1) # this is the hba1c feedback, not the deviation
 
-        return next_state, rew, cost
+        return next_state, rew, cost1, cost2
 
 
     def update_mu(self, init_state):
@@ -166,9 +175,14 @@ class utils:
                                                             14*ep/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)
 
                 self.sbp_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.hba1c_confidence[s][a] = np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+
                 self.cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
 
-                # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], ', sbp_confidence: ', self.sbp_confidence[s][a], ', cvdrisk_confidence: ', self.cvdrisk_confidence[s][a])
+                # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
+                #       ', sbp_confidence: ', self.sbp_confidence[s][a], 
+                #       ', hba1c_confidence: ', self.hba1c_confidence[s][a],
+                #       ', cvdrisk_confidence: ', self.cvdrisk_confidence[s][a])
 
 
     # compute the confidence intervals beta for the transition probabilities
@@ -186,10 +200,12 @@ class utils:
                                                         1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)), 1)
 
                 self.sbp_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.hba1c_confidence[s][a] = np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
                 self.cvdrisk_confidence[s][a] = min(np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
                 
                 # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0],
                 #       ', sbp_confidence: ', self.sbp_confidence[s][a], 
+                #       ', hba1c_confidence: ', self.hba1c_confidence[s][a],
                 #       ', cvdrisk_confidence: ', self.cvdrisk_confidence[s][a])    
 
 
@@ -200,12 +216,14 @@ class utils:
             for a in self.ACTIONS[s]:
                 self.P_confidence[s][a, :] = min(np.sqrt(Z/max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1.0)                
 
-                self.sbp_confidence[s][a] = beta * np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))) 
+                self.sbp_confidence[s][a] = beta * np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1)))
+                self.hba1c_confidence[s][a] = beta * np.sqrt(1.0/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))) 
 
                 self.cvdrisk_confidence[s][a] = min(alpha * np.sqrt( Z / (max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
 
                 # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
-                #       ', self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a], 
+                #       ', self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a],
+                #      ', self.hba1c_confidence[s][a]: ', self.hba1c_confidence[s][a], 
                 #       ', self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
 
 
@@ -230,15 +248,17 @@ class utils:
                     print(self.P_hat)
 
                     
-    def update_empirical_rewards_costs(self, ep_emp_reward, ep_emp_cost):
+    def update_empirical_rewards_costs(self, ep_emp_reward, ep_emp_cost1, ep_emp_cost2):
 
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 self.Total_emp_reward[s][a] = self.Total_emp_reward[s][a] + ep_emp_reward[s][a]
                 self.R_hat[s][a] = self.Total_emp_reward[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a] ,1))
                 
-                self.Total_emp_cost[s][a] = self.Total_emp_cost[s][a] + ep_emp_cost[s][a]
-                self.C_hat[s][a] = self.Total_emp_cost[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))                        
+                self.Total_emp_cost1[s][a] = self.Total_emp_cost1[s][a] + ep_emp_cost1[s][a]
+                self.Total_emp_cost2[s][a] = self.Total_emp_cost2[s][a] + ep_emp_cost2[s][a]
+                self.C1_hat[s][a] = self.Total_emp_cost1[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))
+                self.C2_hat[s][a] = self.Total_emp_cost2[s][a]/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))
 
 
     def update_R_C_tao(self, alpha):
@@ -246,7 +266,8 @@ class utils:
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 self.R_Tao[s][a] = self.R_hat[s][a] + self.alpha_r_OptPessLP * self.cvdrisk_confidence[s][a]
-                self.C_Tao[s][a] = self.C_hat[s][a] + self.alpha_c_OptPessLP * self.sbp_confidence[s][a]
+                self.C1_Tao[s][a] = self.C1_hat[s][a] + self.alpha_c1_OptPessLP1 * self.sbp_confidence[s][a]
+                self.C2_Tao[s][a] = self.C2_hat[s][a] + self.alpha_c1_OptPessLP2 * self.hba1c_confidence[s][a]
 
 
     def compute_opt_LP_Unconstrained(self, ep):
@@ -351,7 +372,8 @@ class utils:
             
         # constraints
         # hba1c within the range for all time steps
-        opt_prob += p.lpSum([q[(h,s,a)] * (max(7.0-self.C[s][a], 0) + max(self.C[s][a]-7.9, 0)) 
+        opt_prob += p.lpSum(
+                    [q[(h,s,a)] * (max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125, 0) + max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.9, 0)) 
                     for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
 
         # opt_prob += p.lpSum([q[(h,s,a)] * self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
@@ -367,7 +389,7 @@ class utils:
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # equation 17(d), initial state is fixed
 
         status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
-        print(p.LpStatus[status])   # The solution status
+        print('+++++', p.LpStatus[status])   # The solution status
         #print(opt_prob)
         print("printing best value constrained:", p.value(opt_prob.objective))
         # print(p.value(opt_prob.objective))
@@ -409,7 +431,7 @@ class utils:
                     opt_q[h,s,a] = 1.0
                     
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
-                con_policy  += opt_q[h,s,a]*(max(0, 7.0-self.C[s][a]) + max(0, self.C[s][a]-7.9)) # since the cost here is the SBP feedback
+                con_policy  += opt_q[h,s,a]*(max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) + max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.9) ) # since the cost here is the SBP feedback + hba1c feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
         print("\nvalue from the conLPsolver:")
@@ -417,7 +439,7 @@ class utils:
         print("cost of policy =", con_policy)
 
         # evaluate the optimal policy using finite horizon policy evaluation
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C) 
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2) 
                                                                                                                                                                           
         return opt_policy, value_of_policy, cost_of_policy, q_policy
                                                                                                                                                                                   
@@ -461,17 +483,20 @@ class utils:
 
         if self.algo == "DOPE":
             alpha_r = self.alpha_r
-            alpha_c = self.alpha_c
+            alpha_c1 = self.alpha_c1
+            alpha_c2 = self.alpha_c2
             alpha_p = self.alpha_p
 
         elif self.algo == "OptCMDP":
             alpha_r = self.alpha_r_OptCMDP
-            alpha_c = self.alpha_c_OptCMDP
+            alpha_c1 = self.alpha_c1_OptCMDP
+            alpha_c2 = self.alpha_c2_OptCMDP
             alpha_p = self.alpha_p_OptCMDP
 
         elif self.algo == "OptPessLP":
             alpha_r = self.alpha_r_OptPessLP
-            alpha_c = self.alpha_c_OptPessLP
+            alpha_c1 = self.alpha_c1_OptPessLP
+            alpha_c2 = self.alpha_c2_OptPessLP
             alpha_p = self.alpha_p_OptPessLP
         
         else:
@@ -479,16 +504,18 @@ class utils:
             sys.exit()
             
         r_k = {}
-        c_k = {}
+        c1_k = {}
+        c2_k = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
-            c_k[s] = np.zeros(l)
+            c1_k[s] = np.zeros(l)
+            c2_k[s] = np.zeros(l)
 
             for a in self.ACTIONS[s]:
                 r_k[s][a] = max(0, self.R_hat[s][a] - alpha_r * self.cvdrisk_confidence[s][a])
-                # c_k[s][a] = max(0, 110-(self.C_hat[s][a] - alpha_c * self.sbp_confidence[s][a])) + max(0, (self.C_hat[s][a] + alpha_c * self.sbp_confidence[s][a]) - 125)
-                c_k[s][a] = max(0, 7.0-(self.C_hat[s][a] - alpha_c * self.sbp_confidence[s][a])) + max(0, (self.C_hat[s][a] + alpha_c * self.sbp_confidence[s][a]) - 7.9)
+                c1_k[s][a] = max(0, 110.0-(self.C1_hat[s][a] - alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + alpha_c1 * self.sbp_confidence[s][a]) - 125.0)
+                c2_k[s][a] = max(0, 7.0-(self.C2_hat[s][a] - alpha_c2 * self.hba1c_confidence[s][a])) + max(0, (self.C2_hat[s][a] + alpha_c2 * self.hba1c_confidence[s][a]) - 7.9)
 
         # objective function
         opt_prob += p.lpSum([z[(h,s,a,s_1)]*r_k[s][a] for h in range(self.EPISODE_LENGTH) 
@@ -496,7 +523,7 @@ class utils:
                                                            for a in self.ACTIONS[s] 
                                                            for s_1 in self.Psparse[s][a]])
 
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c_k[s][a]) 
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c1_k[s][a] + c2_k[s][a]) 
                                             for h in range(self.EPISODE_LENGTH) 
                                             for s in range(self.N_STATES) 
                                             for a in self.ACTIONS[s] 
@@ -571,7 +598,7 @@ class utils:
                     for a in self.ACTIONS[s]:
                         opt_policy[s,h,a] = opt_policy[s,h,a]/sum_prob # normalize the policy to make sure the sum of the probabilities is 1
 
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C)
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
@@ -809,7 +836,7 @@ class utils:
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
     # ++++ Finite Horizon Policy Evaluation ++++
-    def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C):
+    def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C1, C2):
         
         # results to be returned
         q = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
@@ -826,7 +853,7 @@ class utils:
             for a in self.ACTIONS[s]:
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C[s][a]) + max(0, C[s][a]-125)) 
-                x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 7.0-C[s][a]) + max(0, C[s][a]-7.9)) # hba1c
+                x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C1[s][a]) + max(0, C1[s][a]-125) + max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # sbp + hba1c
 
             c[s, self.EPISODE_LENGTH-1] = x #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
 
@@ -842,7 +869,7 @@ class utils:
                 for a in self.ACTIONS[s]:
                     x += policy[s,h,a]*R[s][a]
                     # y += policy[s,h,a]*C[s][a]
-                    y += policy[s,h,a]*(max(0, 7.0-C[s][a]) + max(0, C[s][a]-7.9)) # hba1c deviation
+                    y += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) + max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # sbp + hba1c deviation
 
                 R_policy[s,h] = x # expected reward of the state s at time h under the policy
                 C_policy[s,h] = y # expected cost of the state s at time h under the policy

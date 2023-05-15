@@ -47,11 +47,15 @@ Codes located in`BPClass/` folder.
 #### BPClass_DOPE
 
 1. Run `model.ipynb` to: 
-   * data file used is `../data/ACCORD_BPClass_v2.csv`
+   * data file used for each case:
+     * BPClass: `../data/ACCORD_BPClass_v2.csv`
+     * BGClass: `../data/ACCORD_BGClass_v2.csv`
+     * BPBGClass: `../data/ACCORD_BPBGClass_v2.csv`
+  
    * set up the state features and action features for state space and action space
-   * get empriical estimates of the P R C based on the dataset, save it to `model.pkl`
-   * solve the optimal policy, save it to `solution.pkl`
-   * solve the baseline policy, save it to `base.pkl`
+   * get empriical estimates of the P R C based on the dataset, save it to `output/model.pkl`
+   * solve the optimal policy, save it to `output/solution.pkl`
+   * solve the baseline policy, save it to `output/base.pkl`
 
 2. The `UtilityMethods.py` defines the `utils` class, which does:
    * linear programming solver
