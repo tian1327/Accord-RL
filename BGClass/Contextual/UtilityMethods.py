@@ -44,7 +44,7 @@ class utils:
         self.C2 = 0.02
         self.C3 = 0.25
         self.CONTEXT_VEC_LENGTH = CONTEXT_VEC_LENGTH
-        self.STATE_CODE_LENGTH = CONTEXT_VEC_LENGTH
+        self.STATE_CODE_LENGTH = STATE_CODE_LENGTH
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
         self.U_sbp =  np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
         self.U_hba1c = np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for HbA1c raduis calculation
@@ -540,7 +540,8 @@ class utils:
 
         # ----------------- get U_cvd_inverse -----------------
         # reset the self.U_cvd
-        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)) # here we assume the context vector is of length 1 !!!, For BPBG, this is 2
+        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH + self.STATE_CODE_LENGTH + self.ACTION_CODE_LENGTH, 
+                               self.CONTEXT_VEC_LENGTH + self.STATE_CODE_LENGTH + self.ACTION_CODE_LENGTH)) 
 
         XSA = np.concatenate((self.X, self.S, self.A), axis=1)
         # print('XSA.shape: ', XSA.shape)
@@ -578,7 +579,7 @@ class utils:
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
             # print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
 
-            self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)
+            self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH + self.STATE_CODE_LENGTH + self.ACTION_CODE_LENGTH)
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
@@ -669,7 +670,7 @@ class utils:
 
         # ----------------- get U_cvd_inverse -----------------
         # reset the self.U_cvd
-        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)) # here we assume the context vector is of length 1 !!!, For BPBG, this is 2
+        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)) # here we assume the context vector is of length 1 !!!, For BPBG, this is 2
 
         XSA = np.concatenate((self.X, self.S, self.A), axis=1)
         # print('XSA.shape: ', XSA.shape)
@@ -707,7 +708,7 @@ class utils:
             min_eigenvalue_cvd = np.min(eigenvalues_cvd)
             # print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
 
-            self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+1+self.ACTION_CODE_LENGTH)
+            self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)
             U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
             eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
