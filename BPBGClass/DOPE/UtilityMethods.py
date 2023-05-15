@@ -81,10 +81,12 @@ class utils:
             l = len(self.ACTIONS[s])
             self.R_Tao[s] = np.zeros(l)
             
-        self.C_Tao = {}
+        self.C1_Tao = {}
+        self.C2_Tao = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
-            self.C_Tao[s] = np.zeros(l)
+            self.C1_Tao[s] = np.zeros(l)
+            self.C2_Tao[s] = np.zeros(l)
         
         for s in range(self.N_STATES):
             self.P_hat[s] = {} # estimated transition probabilities
@@ -266,8 +268,8 @@ class utils:
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
                 self.R_Tao[s][a] = self.R_hat[s][a] + self.alpha_r_OptPessLP * self.cvdrisk_confidence[s][a]
-                self.C1_Tao[s][a] = self.C1_hat[s][a] + self.alpha_c1_OptPessLP1 * self.sbp_confidence[s][a]
-                self.C2_Tao[s][a] = self.C2_hat[s][a] + self.alpha_c1_OptPessLP2 * self.hba1c_confidence[s][a]
+                self.C1_Tao[s][a] = self.C1_hat[s][a] + self.alpha_c1_OptPessLP * self.sbp_confidence[s][a]
+                self.C2_Tao[s][a] = self.C2_hat[s][a] + self.alpha_c2_OptPessLP * self.hba1c_confidence[s][a]
 
 
     def compute_opt_LP_Unconstrained(self, ep):
@@ -453,7 +455,7 @@ class utils:
                 for a in self.ACTIONS[s]:
                     opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
 
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C)
+        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost_of_policy, 'Optimal', q_policy

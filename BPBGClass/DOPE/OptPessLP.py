@@ -31,7 +31,7 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
+    [P, R, C1, C2, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
@@ -45,8 +45,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # CONSTRAINT = RUN_NUMBER # +++++
 
-CONSTRAINT = CONSTRAINT_list[2]
-C_b = C_b_list[2]
+CONSTRAINT = CONSTRAINT_list[8]
+C_b = C_b_list[8]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -74,19 +74,22 @@ print("beta =", beta)
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R, C, INIT_STATE_INDEX, 
+    util_methods = utils(EPS, DELTA, M, P, R, C1, C2, INIT_STATE_INDEX, 
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi, "OptPessLP") # set the utility methods for each run
 
     ep_count = np.zeros((N_STATES, N_ACTIONS)) # initialize the counter for each run
     ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
     ep_emp_reward = {} # initialize the empirical rewards and costs for each run
-    ep_emp_cost = {}
+    ep_emp_cost1 = {}
+    ep_emp_cost2 = {}
     for s in range(N_STATES):
         ep_emp_reward[s] = {}
-        ep_emp_cost[s] = {}
+        ep_emp_cost1[s] = {}
+        ep_emp_cost2[s] = {}
         for a in range(N_ACTIONS):
             ep_emp_reward[s][a] = 0
-            ep_emp_cost[s][a] = 0
+            ep_emp_cost1[s][a] = 0  
+            ep_emp_cost2[s][a] = 0
 
     objs = []
     cons = []
@@ -96,7 +99,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
         util_methods.setCounts(ep_count_p, ep_count)
         util_methods.update_empirical_model(0) 
-        util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
+        util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost1, ep_emp_cost2)
         util_methods.compute_confidence_intervals_OptPessLP(Z, alpha, beta)
         util_methods.update_R_C_tao(alpha)
 
@@ -119,7 +122,7 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.setCb(Cb)             
 
         # evaluate the baseline policy under current estimated P_hat and R_Tao and C_Tao
-        q_base, value_base, cost_base  = util_methods.FiniteHorizon_Policy_evaluation(util_methods.P_hat, pi_b, util_methods.R_Tao, util_methods.C_Tao)
+        q_base, value_base, cost_base  = util_methods.FiniteHorizon_Policy_evaluation(util_methods.P_hat, pi_b, util_methods.R_Tao, util_methods.C1_Tao, util_methods.C2_Tao)
 
         if cost_base[s_idx_init,0] >= (CONSTRAINT + Cb)/2: # follow the baseline policy if the cost is too high
             pi_k = pi_b
@@ -169,21 +172,24 @@ for sim in range(NUMBER_SIMULATIONS):
         ep_count_p = np.zeros((N_STATES, N_ACTIONS, N_STATES))
         for s in range(N_STATES):
             ep_emp_reward[s] = {}
-            ep_emp_cost[s] = {}
+            ep_emp_cost1[s] = {}
+            ep_emp_cost2[s] = {}
             for a in range(N_ACTIONS):
                 ep_emp_reward[s][a] = 0
-                ep_emp_cost[s][a] = 0        
+                ep_emp_cost1[s][a] = 0        
+                ep_emp_cost2[s][a] = 0
 
         s = s_idx_init
         for h in range(EPISODE_LENGTH): # for each step in current episode
             prob = pi_k[s, h, :]
             
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
-            next_state, rew, cost = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
+            next_state, rew, cost1, cost2 = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
             ep_emp_reward[s][a] += rew
-            ep_emp_cost[s][a] += cost # this is the SBP feedback
+            ep_emp_cost1[s][a] += cost1 # this is the SBP feedback
+            ep_emp_cost2[s][a] += cost2 # this is the SBP feedback
             s = next_state
 
         # dump results out every xxx episodes
