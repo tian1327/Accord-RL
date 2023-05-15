@@ -13,7 +13,7 @@ NUMBER_EPISODES_o = 5000
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
     fn = sys.argv[1]
-    NUMBER_EPISODES_o = int(sys.argv[2]) + 1
+    NUMBER_EPISODES_o = int(sys.argv[2]) 
 
 L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
@@ -109,7 +109,7 @@ for ax in axs:
 
 # plot the first subplot
 axs[0].plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
-axs[0].plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'SBP min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[0].plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'hba1c min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
 axs[0].grid()
 axs[0].legend(loc = 'upper left',prop={'size': 13})
 axs[0].set_xlabel('Episode')
@@ -132,7 +132,7 @@ axs[2].set_ylabel('Constraint Regret')
 
 # plot the fourth subplot
 axs[3].plot(x_o, R_err_opsrl_mean[::L], color='red',label = 'CVD Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
-axs[3].plot(x_o, C_err_opsrl_mean[::L], color='blue',label = 'SBP Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[3].plot(x_o, C_err_opsrl_mean[::L], color='blue',label = 'hba1c Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
 axs[3].grid()
 axs[3].legend(loc = 'upper right',prop={'size': 13})
 axs[3].set_ylim([0, 60])

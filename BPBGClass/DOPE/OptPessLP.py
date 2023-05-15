@@ -11,18 +11,15 @@ import sys
 import random
 from tqdm import tqdm
 
-start_time = time.time()
-
 # control parameters
 NUMBER_EPISODES = 3e4
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 use_gurobi = False
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
@@ -32,22 +29,24 @@ if os.path.exists(old_filename):
     os.remove(old_filename)
     print("Removed old file: ", old_filename)
 
-
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, C_b,
+    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
-    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
+    [opt_policy_con_list, opt_value_LP_con_list, opt_cost_LP_con_list, opt_q_con_list] = pickle.load(f) 
 
 with open('output/base.pkl', 'rb') as f:
-    [pi_b, val_b, cost_b, q_b] = pickle.load(f)
+    [pi_b_list, val_b_list, cost_b_list, q_b_list] = pickle.load(f)
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER # +++++
+# CONSTRAINT = RUN_NUMBER # +++++
+
+CONSTRAINT = CONSTRAINT_list[2]
+C_b = C_b_list[2]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -104,7 +103,20 @@ for sim in range(NUMBER_SIMULATIONS):
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
         s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
         s_idx_init = state_code_to_index[s_code]
-        util_methods.update_mu(s_idx_init)  
+        util_methods.update_mu(s_idx_init)
+
+        # set corresponding base policy and optimal policy
+        pi_b = pi_b_list[s_idx_init]
+        val_b = val_b_list[s_idx_init]
+        cost_b = cost_b_list[s_idx_init]
+        q_b = q_b_list[s_idx_init]
+
+        opt_value_LP_con = opt_value_LP_con_list[s_idx_init]       
+
+        CONSTRAINT = CONSTRAINT_list[s_idx_init]
+        Cb = C_b_list[s_idx_init]
+        util_methods.setConstraint(CONSTRAINT)
+        util_methods.setCb(Cb)             
 
         # evaluate the baseline policy under current estimated P_hat and R_Tao and C_Tao
         q_base, value_base, cost_base  = util_methods.FiniteHorizon_Policy_evaluation(util_methods.P_hat, pi_b, util_methods.R_Tao, util_methods.C_Tao)

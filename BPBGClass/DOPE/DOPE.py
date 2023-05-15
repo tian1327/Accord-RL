@@ -11,20 +11,25 @@ import sys
 import random
 from tqdm import tqdm
 
-start_time = time.time()
 
 # control parameters
-NUMBER_EPISODES = 3e5
-alpha_k = 0.1
+NUMBER_EPISODES = 3e4
+alpha_k = 0.002
+
 use_gurobi = False
-RUN_NUMBER = 150 #Change this field to set the seed for the experiment.
+RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
 
 NUMBER_SIMULATIONS = 1
-random.seed(RUN_NUMBER)
-np.random.seed(RUN_NUMBER)
+random.seed(int(RUN_NUMBER))
+np.random.seed(int(RUN_NUMBER))
+
+# make the output directory if it doesn't exist
+if not os.path.exists('output'):
+    os.makedirs('output')
+    print("Created output/ directory")
 
 # remove the filename = 'output/opsrl' + str(RUN_NUMBER) + '.pkl' to avoid reading old data
 old_filename = 'output/DOPE_opsrl' + str(RUN_NUMBER) + '.pkl'
@@ -35,19 +40,22 @@ if os.path.exists(old_filename):
 
 # Initialize:
 with open('output/model.pkl', 'rb') as f:
-    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT, C_b,
+    [P, R, C, INIT_STATE_INDEX, INIT_STATES_LIST, state_code_to_index, CONSTRAINT_list, C_b_list,
      N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 with  open('output/solution.pkl', 'rb') as f:
-    [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con] = pickle.load(f) 
+    [opt_policy_con_list, opt_value_LP_con_list, opt_cost_LP_con_list, opt_q_con_list] = pickle.load(f) 
 
 with open('output/base.pkl', 'rb') as f:
-    [pi_b, val_b, cost_b, q_b] = pickle.load(f)
+    [pi_b_list, val_b_list, cost_b_list, q_b_list] = pickle.load(f)
 
 EPS = 1 # not used
 M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
-CONSTRAINT = RUN_NUMBER # +++++
+# CONSTRAINT = RUN_NUMBER# +++++
+
+CONSTRAINT = CONSTRAINT_list[2]
+C_b = C_b_list[2]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -58,7 +66,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
-#K0 = -1
+# K0 = -1
+#K0 = 2000
 
 print()
 print("alpha_k =", alpha_k)
@@ -79,6 +88,9 @@ L_prime = 2 * math.log(6 * N_STATES* N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODE
 # page 11 in word document, to calculated the confidence intervals for the transition probabilities beta
 print("L =", L)
 print("L_prime =", L_prime)
+
+# pause for 3 seconds to allow the user to read the output
+time.sleep(3)
 
 for sim in range(NUMBER_SIMULATIONS):
 
@@ -101,6 +113,28 @@ for sim in range(NUMBER_SIMULATIONS):
     cons = []
     for episode in range(NUMBER_EPISODES):
 
+        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
+        # INIT_STATES_LIST = ['1', '2']
+        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
+        s_idx_init = state_code_to_index[s_code]
+        # s_idx_init = 0 # +++++
+        util_methods.update_mu(s_idx_init)
+
+        # set corresponding base policy and optimal policy
+        pi_b = pi_b_list[s_idx_init]
+        val_b = val_b_list[s_idx_init]
+        cost_b = cost_b_list[s_idx_init]
+        q_b = q_b_list[s_idx_init]
+
+        opt_value_LP_con = opt_value_LP_con_list[s_idx_init]
+
+        CONSTRAINT = CONSTRAINT_list[s_idx_init]
+        Cb = C_b_list[s_idx_init]
+
+        util_methods.setConstraint(CONSTRAINT)
+        util_methods.setCb(Cb)
+
+
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
             val_k = val_b
@@ -109,7 +143,7 @@ for sim in range(NUMBER_SIMULATIONS):
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
             util_methods.update_empirical_rewards_costs(ep_emp_reward, ep_emp_cost)
-            util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
+            # util_methods.compute_confidence_intervals_DOPE(L, L_prime, 1) # compute the confidence intervals for the transition probabilities beta
             dtime = 0
 
         else: # use the DOPE policy when the episode is greater than K0
@@ -136,10 +170,11 @@ for sim in range(NUMBER_SIMULATIONS):
                 pass
                 #print('+++++In episode', episode, 'found optimal policy')
 
-        # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-        s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
-        s_idx_init = state_code_to_index[s_code]
-        util_methods.update_mu(s_idx_init)        
+
+
+        print('s_idx_init=', s_idx_init)
+        #print('cost_b[s_idx_init, 0]=', cost_b[s_idx_init, 0])
+        print('cost_k[s_idx_init, 0]=', cost_k[s_idx_init, 0])
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
@@ -153,7 +188,7 @@ for sim in range(NUMBER_SIMULATIONS):
             ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
             objs.append(ObjRegret2[sim, episode])
             cons.append(ConRegret2[sim, episode])
-            if cost_k[0, 0] > CONSTRAINT:
+            if cost_k[s_idx_init, 0] > CONSTRAINT:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
             else:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
