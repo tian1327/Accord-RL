@@ -6,8 +6,23 @@ import sys
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
 
+# define a function!!!
+def get_l2norm_diff(model, model_hat):
+    model_weights = list(model.coef_)
+    model_intercept = [model.intercept_]
+    model_wt_vec = np.array(model_weights + model_intercept)
+
+    model_hat_weights = model_hat.coef_.tolist()
+    model_hat_intercept = [model_hat.intercept_]
+    model_hat_wt_vec = np.array(model_hat_weights + model_hat_intercept)
+
+    model_est_error = np.linalg.norm(model_wt_vec - model_hat_wt_vec)
+    
+    return model_est_error
+
+
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+    def __init__(self, eps, delta, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                 INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi):
 
         self.use_gurobi = use_gurobi
@@ -20,9 +35,11 @@ class utils:
         self.R = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_obs = np.zeros((self.N_STATES,self.N_ACTIONS)) # observed CVDRisk with noises added
         self.R_y_pred = np.zeros((self.N_STATES,self.N_ACTIONS)) # predicted value from CVDRisk regression model
-        self.C = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C1 = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C2 = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_model = R_model
-        self.C_model = C_model
+        self.C1_model = C1_model
+        self.C2_model = C2_model
         self.CONTEXT_VECTOR = None
         self.state_index_to_code = state_index_to_code
         self.action_index_to_code = action_index_to_code
@@ -40,9 +57,10 @@ class utils:
 
         # for connfidence bounds
         self.episode = 0
-        self.C1 = 1.0
-        self.C2 = 0.02
-        self.C3 = 0.25
+        self.alpha_1 = 1.0
+        self.alpha_2 = 0.02
+        self.a;pha_3 = 0.25
+
         self.CONTEXT_VEC_LENGTH = CONTEXT_VEC_LENGTH
         self.STATE_CODE_LENGTH = CONTEXT_VEC_LENGTH
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
@@ -71,7 +89,8 @@ class utils:
         
         self.alpha_p = 1.0
         self.alpha_r = 0.1
-        self.alpha_c = 1.0
+        self.alpha_c1 = 1.0
+        self.alpha_c2 = 1.0
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -182,7 +201,8 @@ class utils:
                 # self.R_obs[s][a] = obs_reward
 
                 C_input = np.concatenate((context_vec, np.array(action_code_list)), axis=0)
-                self.C[s][a] = self.C_model.predict(C_input.reshape(1, -1))
+                self.C1[s][a] = self.C1_model.predict(C_input.reshape(1, -1))
+                self.C2[s][a] = self.C2_model.predict(C_input.reshape(1, -1))
 
                 # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
 
@@ -391,28 +411,9 @@ class utils:
 
         # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
         R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
-
-        # get the weights of self.C_model, which is a linear regression model
-        C_model_weights = list(self.C_model.coef_)
-        C_model_intercept = [self.C_model.intercept_]
-        # print('+++C_model_intercept: ', C_model_intercept)
-        C_model_wt_vec = np.array(C_model_weights + C_model_intercept)
-        # print('+++C_model_wt_vec: ', C_model_wt_vec)
-
-        # get the weights of self.hba1c_regr, which is a linear regression model
-        C_hat_weights = self.hba1c_regr.coef_.tolist()
-        C_hat_intercept = [self.hba1c_regr.intercept_]
-        # print('+++C_hat_intercept: ', C_hat_intercept)
-        C_hat_wt_vec = np.array(C_hat_weights + C_hat_intercept)
-        # print('+++C_hat_wt_vec: ', C_hat_wt_vec)
-
-        # get the l2 norm of the difference between C_model_wt_vec and C_hat_wt_vec
-        C_est_error = np.linalg.norm(C_model_wt_vec - C_hat_wt_vec)
-
-        # print('cvd_rmse = ', round(cvd_rmse,4), 'sbp_rmse = ', round(sbp_rmse,4), 'R_est_error = ', round(R_est_error,4), 'C_est_error = ', round(C_est_error,4))        
-
-        # if self.episode == 2:
-        #     stop 
+        
+        C1_est_error = get_l2norm_diff(self.C1_model, self.sbp_regr)
+        C2_est_error = get_l2norm_diff(self.C2_model, self.hba1c_regr)
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
         for s in range(self.N_STATES):
@@ -444,7 +445,7 @@ class utils:
                 # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
                 # stop        
 
-        return (R_est_error, C_est_error)
+        return (R_est_error, C1_est_error, C2_est_error)
 
 
     def add_design_vector(self, xa_vec):
@@ -586,7 +587,7 @@ class utils:
             # print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
 
         # calculate the end_term 4 *hr/sqrt(t)
-        hr = self.C2* np.sqrt(9+1+4)
+        hr = self.alpha_2* np.sqrt(9+1+4)
         end_term = 4 * hr / np.sqrt(self.episode)
         # print('end_term: ', end_term) # 4
 
@@ -635,7 +636,7 @@ class utils:
                 prod = np.matmul(prod, xa_vec)
 
                 # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.sbp_confidence[s][a] = self.C1 * np.log(self.episode) * np.sqrt(prod)
+                self.sbp_confidence[s][a] = self.alpha_1 * np.log(self.episode) * np.sqrt(prod)
                 # print('self.sbp_confidence[s][a]: ', self.sbp_confidence[s][a])
 
 
@@ -652,7 +653,7 @@ class utils:
                 prod = np.matmul(xsa_transpose, U_cvd_inverse)
                 prod = np.matmul(prod, xsa_vec)
                 # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * np.sqrt(prod) + end_term
+                self.cvdrisk_confidence[s][a] = self.alpha_3 * np.log(self.episode) * np.sqrt(prod) + end_term
                 # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
         
         # print('self.sbp_confidence[1][1]: ', self.sbp_confidence[1][1])
@@ -715,7 +716,7 @@ class utils:
             # print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
 
         # calculate the end_term 4 *hr/sqrt(t)
-        hr = self.C2 * np.sqrt(9+1+4)
+        hr = self.alpha_2 * np.sqrt(9+1+4)
         end_term = 4 * hr / np.sqrt(self.episode)
         # print('end_term: ', end_term) # 4
 
@@ -762,7 +763,7 @@ class utils:
                 prod = np.matmul(prod, xa_vec)
 
                 # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.hba1c_confidence[s][a] = self.C1 * np.log(self.episode) * np.sqrt(prod)
+                self.hba1c_confidence[s][a] = self.alpha_1 * np.log(self.episode) * np.sqrt(prod)
                 # print('self.hba1c_confidence[s][a]: ', self.hba1c_confidence[s][a])
 
                 #---------- compute the confidence intervals for the CVDRisk_feedback
@@ -778,7 +779,7 @@ class utils:
                 prod = np.matmul(xsa_transpose, U_cvd_inverse)
                 prod = np.matmul(prod, xsa_vec)
                 # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.cvdrisk_confidence[s][a] = self.C3 * np.log(self.episode) * np.sqrt(prod) + end_term
+                self.cvdrisk_confidence[s][a] = self.alpha_3 * np.log(self.episode) * np.sqrt(prod) + end_term
                 # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
         
         # print('self.hba1c_confidence[1][1]: ', self.hba1c_confidence[1][1])

@@ -75,7 +75,7 @@ if os.path.exists(old_filename):
     print("Removed old file: ", old_filename)
 
 # Initialize:
-with open('output/model_contextual_BG.pkl', 'rb') as f:
+with open('output/model_contextual_BPBG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT_list, C_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
@@ -84,14 +84,15 @@ STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
-R_model = pickle.load(open('output/CVDRisk_estimator_BG.pkl', 'rb'))
-C_model = pickle.load(open('output/A1C_feedback_estimator_BG.pkl', 'rb'))
+R_model = pickle.load(open('output/CVDRisk_estimator_BPBG.pkl', 'rb'))
+C1_model = pickle.load(open('output/SBP_feedback_estimator_BPBG.pkl', 'rb'))
+C2_model = pickle.load(open('output/A1C_feedback_estimator_BPBG.pkl', 'rb'))
 
 
 # CONSTRAINT = RUN_NUMBER # +++++
 
-CONSTRAINT = CONSTRAINT_list[2]
-C_b = C_b_list[2]
+CONSTRAINT = CONSTRAINT_list[8]
+C_b = C_b_list[8]
 
 Cb = C_b
 #Cb = 150
@@ -132,7 +133,7 @@ M = 0
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+    util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
 
@@ -151,8 +152,10 @@ for sim in range(NUMBER_SIMULATIONS):
     objs = [] # objective regret for current run
     cons = []
     R_est_err = []
-    C_est_err = []
+    C1_est_err = [] # SBP feedback error
+    C2_est_err = [] # HbA1c feedback error
     min_eign_cvd_list = []
+    min_eign_sbp_list = []
     min_eign_hba1c_list = []
 
     select_baseline_policy_ct = 0
