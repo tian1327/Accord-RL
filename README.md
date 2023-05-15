@@ -103,3 +103,5 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 #### Plot Regrets Comparison
 
 * All models are run for 3e4 episodes, `python plot_all.py 30000` to compare all models.
+
+* Final results for all 3 cases are stored in folders `output_final/`.

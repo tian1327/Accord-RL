@@ -8,7 +8,7 @@ from matplotlib.ticker import StrMethodFormatter
 
 
 def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
-    label = fn.split('_')[0].split('/')[-1]
+    label = fn.split('_')[-2].split('/')[-1]
 
     # ----------------- Read data from file ----------------- #
     obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -70,10 +70,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output/CONTEXTUAL_opsrl100.pkl',
-           'output/DOPE_opsrl100.pkl',
-           'output/OptPessLP_opsrl100.pkl', 
-           'output/OptCMDP_opsrl100.pkl']
+fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
+           'output_final/DOPE_opsrl100.pkl',
+           'output_final/OptPessLP_opsrl100.pkl', 
+           'output_final/OptCMDP_opsrl100.pkl']
 
 data_list = []
 label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
@@ -130,5 +130,5 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/regrets.pdf")
+plt.savefig("BGClass_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 plt.show()

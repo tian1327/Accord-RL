@@ -8,7 +8,7 @@ from matplotlib.ticker import StrMethodFormatter
 
 
 def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
-    label = fn.split('_')[0].split('/')[-1]
+    label = fn.split('_')[-2].split('/')[-1]
 
     # ----------------- Read data from file ----------------- #
     obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -17,6 +17,9 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
     for i in range(NUMBER_SIMULATIONS):
         
         filename = fn
+
+        print('Reading data from file: ', filename)
+        print('label = ', label)
         f = open(filename, 'rb')
         objs = []
         cons = []
@@ -70,10 +73,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
-           'output/DOPE_opsrl150.pkl',
-           'output/OptPessLP_opsrl150.pkl', 
-           'output/OptCMDP_opsrl150.pkl']
+fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl150.pkl',
+           'output_final/DOPE_opsrl150.pkl',
+           'output_final/OptPessLP_opsrl150.pkl', 
+           'output_final/OptCMDP_opsrl150.pkl']
 
 data_list = []
 label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
@@ -129,5 +132,5 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/regrets.pdf")
+plt.savefig("BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w') 
 plt.show()
