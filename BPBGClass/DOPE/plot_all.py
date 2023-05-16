@@ -8,7 +8,7 @@ from matplotlib.ticker import StrMethodFormatter
 
 
 def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
-    label = fn.split('_')[0].split('/')[-1]
+    label = fn.split('_')[-2].split('/')[-1]
 
     # ----------------- Read data from file ----------------- #
     obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -26,7 +26,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
             try:
                 j += 1
                 if label == 'CONTEXTUAL':
-                    [R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+                    [R_est_err, C1_est_err,  C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 else:
                     [NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 objs.append(ObjRegret)
@@ -124,7 +124,7 @@ axs[0].set_ylabel('Objective Regret')
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[1].legend(loc = 'center right',prop={'size': 13})
-axs[1].set_ylim([-0.1e3, 1e4])
+#axs[1].set_ylim([-0.1e3, 1e4])
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Constraint Regret')
 
