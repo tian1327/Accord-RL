@@ -152,7 +152,10 @@ for sim in range(NUMBER_SIMULATIONS):
                 cost2_k = cost2_b
                 q_k = q_b
                 infeasible_elp_ct += 1             
-        
+                
+        print('s_idx_init =', s_idx_init)
+        print('cost1_k[s_idx_init, 0] =', cost1_k[s_idx_init, 0])
+        print('cost2_k[s_idx_init, 0] =', cost2_k[s_idx_init, 0])        
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0])
             Con1Regret2[sim, episode] = max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1)
