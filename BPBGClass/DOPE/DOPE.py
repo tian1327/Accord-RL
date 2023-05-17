@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 0.1
+alpha_k = 0.05
 
 use_gurobi = False
 RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
