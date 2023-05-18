@@ -186,11 +186,9 @@ class utils:
 
                 self.cvdrisk_confidence[s][a] = min(np.sqrt(L_prime/(max(self.NUMBER_OF_OCCURANCES[s][a], 1))), 1.0)
 
-                # print('self.P_confidence[s][a, 0]: ', self.P_confidence[s][a, 0], 
-                #       ', sbp_confidence: ', self.sbp_confidence[s][a], 
-                #       ', hba1c_confidence: ', self.hba1c_confidence[s][a],
-                #       ', cvdrisk_confidence: ', self.cvdrisk_confidence[s][a])
-
+                # changee the following to {}.format(value)
+                # print('self.P_confidence[{}][{}, 0]: {}, sbp_confidence: {}, hba1c_confidence: {}, cvdrisk_confidence: {}'.format(s, a, 
+                #      self.P_confidence[s][a, 0], self.sbp_confidence[s][a], self.hba1c_confidence[s][a], self.cvdrisk_confidence[s][a]))
 
     # compute the confidence intervals beta for the transition probabilities
     def compute_confidence_intervals_OptCMDP(self): 

@@ -47,8 +47,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # CONSTRAINT = RUN_NUMBER # +++++
 
-CONSTRAINT = CONSTRAINT1_list[8]
-C_b = C1_b_list[8]
+CONSTRAINT = CONSTRAINT1_list[-1]
+C_b = C1_b_list[-1]
 
 
 Cb = C_b
@@ -89,6 +89,8 @@ for sim in range(NUMBER_SIMULATIONS):
     objs = [] # objective regret for current run
     cons1 = []
     cons2 = []
+    max_cost1 = 0
+    max_cost2 = 0
     select_baseline_policy_ct = 0 
     for episode in range(NUMBER_EPISODES):
 
@@ -134,9 +136,11 @@ for sim in range(NUMBER_SIMULATIONS):
             pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
             select_baseline_policy_ct += 1                    
         
-        print('s_idx_init =', s_idx_init)
-        print('cost1_k[s_idx_init, 0] =', cost1_k[s_idx_init, 0])
-        print('cost2_k[s_idx_init, 0] =', cost2_k[s_idx_init, 0])
+        max_cost1 = max(max_cost1, cost1_k[s_idx_init, 0])
+        max_cost2 = max(max_cost2, cost2_k[s_idx_init, 0])
+        print('s_idx_init={}, cost1_k[s_idx_init, 0]={:.2f}, CONS1={:.2f}, max_cost1={:2f}, cost2_k[s_idx_init, 0]={:.2f}, CONS2={:.2f}, max_cost2={:.2f},'.format(
+               s_idx_init, cost1_k[s_idx_init, 0], CONSTRAINT1, max_cost1, cost2_k[s_idx_init, 0], CONSTRAINT2, max_cost2)) 
+
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
             Con1Regret2[sim, episode] = max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1) # constraint regret, we care about the cumulative cost of a policy at the initial state

@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # control parameters
 NUMBER_EPISODES = 3e4
-alpha_k = 0.05
+alpha_k = 0.5
 
 use_gurobi = False
 RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
@@ -54,8 +54,8 @@ M = 1024* N_STATES*EPISODE_LENGTH**2/EPS**2 # not used
 
 # CONSTRAINT = RUN_NUMBER# +++++
 
-CONSTRAINT = CONSTRAINT1_list[8]
-C_b = C1_b_list[8]
+CONSTRAINT = CONSTRAINT1_list[-1]
+C_b = C1_b_list[-1]
 
 Cb = C_b
 print("CONSTRAINT =", CONSTRAINT)
@@ -67,7 +67,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
 # K0 = -1
-#K0 = 2000
+K0 = 1000
 
 print()
 print("alpha_k =", alpha_k)
@@ -115,6 +115,8 @@ for sim in range(NUMBER_SIMULATIONS):
     objs = [] # objective regret for current run
     cons1 = []
     cons2 = []
+    max_cost1 = 0
+    max_cost2 = 0
     for episode in range(NUMBER_EPISODES):
 
         # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
@@ -179,12 +181,10 @@ for sim in range(NUMBER_SIMULATIONS):
                 pass
                 #print('+++++In episode', episode, 'found optimal policy')
 
-
-
-        print('s_idx_init=', s_idx_init)
-        #print('cost_b[s_idx_init, 0]=', cost_b[s_idx_init, 0])
-        print('cost1_k[s_idx_init, 0]=', cost1_k[s_idx_init, 0])
-        print('cost2_k[s_idx_init, 0]=', cost2_k[s_idx_init, 0])
+        max_cost1 = max(max_cost1, cost1_k[s_idx_init, 0])
+        max_cost2 = max(max_cost2, cost2_k[s_idx_init, 0])
+        print('s_idx_init={}, cost1_k[s_idx_init, 0]={:.2f}, CONS1={:.2f}, max_cost1={:2f}, cost2_k[s_idx_init, 0]={:.2f}, CONS2={:.2f}, max_cost2={:.2f},'.format(
+               s_idx_init, cost1_k[s_idx_init, 0], CONSTRAINT1, max_cost1, cost2_k[s_idx_init, 0], CONSTRAINT2, max_cost2)) 
 
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
