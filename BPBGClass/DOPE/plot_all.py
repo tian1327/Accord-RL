@@ -75,7 +75,7 @@ NUMBER_EPISODES_o = 5000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
-    NUMBER_EPISODES_o = int(sys.argv[1]) 
+    NUMBER_EPISODES_o = int(sys.argv[1]) + 1
 
 L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
@@ -138,7 +138,7 @@ axs[0].set_ylabel('Objective Regret')
 # axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
 axs[1].grid()
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs[1].legend(loc = 'upper left',prop={'size': 13})
+axs[1].legend(loc = 'center right',prop={'size': 13})
 #axs[1].set_ylim([-0.1e3, 1e4])
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Constraint Regret')
