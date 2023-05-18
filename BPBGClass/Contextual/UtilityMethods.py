@@ -23,7 +23,8 @@ def get_l2norm_diff(model, model_hat):
 
 class utils:
     def __init__(self, eps, delta, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
-                INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, CONSTRAINT, Cb, use_gurobi):
+                INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, 
+                CONSTRAINT1, C1b, CONSTRAINT2, C2b, use_gurobi):
 
         self.use_gurobi = use_gurobi
         self.EPISODE_LENGTH = EPISODE_LENGTH
@@ -75,7 +76,8 @@ class utils:
         self.eps = eps
         self.delta = delta
         self.M = M
-        self.Cb = Cb
+        self.C1b = C1b
+        self.C2b = C2b
         #self.ENV_Q_VALUES = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS))
         
         self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -112,7 +114,8 @@ class utils:
         # self.mu[0] = 1.0 # initial state is fixed
         self.mu[INIT_STATE_INDEX] = 1.0 # initial state is fixed to most frequent BLR state 
 
-        self.CONSTRAINT = CONSTRAINT
+        self.CONSTRAINT1 = CONSTRAINT1
+        self.CONSTRAINT2 = CONSTRAINT2
        
         self.R_Tao = {}
         for s in range(self.N_STATES):
@@ -158,11 +161,13 @@ class utils:
             
         # print('self.Psparse: ', self.Psparse)
     
-    def setConstraint(self, CONSTRAINT):
-        self.CONSTRAINT = CONSTRAINT
+    def setConstraint(self, CONSTRAINT1, CONSTRAINT2):
+        self.CONSTRAINT1 = CONSTRAINT1
+        self.CONSTRAINT2 = CONSTRAINT2
     
-    def setCb(self, Cb):
-        self.Cb = Cb
+    def setCb(self, C1b, C2b):
+        self.C1b = C1b
+        self.C2b = C2b
 
     def update_episode(self, episode):
         self.episode = episode
@@ -473,8 +478,9 @@ class utils:
         # instead we do this in the compute_confidence_interval function
 
 
-    def update_CONSTRAINT(self, new_CONSTRAINT):
-        self.CONSTRAINT = new_CONSTRAINT
+    def update_CONSTRAINT(self, new_CONSTRAINT1, new_CONSTRAINT2):
+        self.CONSTRAINT1 = new_CONSTRAINT1
+        self.CONSTRAINT2 = new_CONSTRAINT2
 
     def step(self, s, a, h):  # take a step in the environment
         # h is not used here
@@ -836,8 +842,12 @@ class utils:
         # opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
         #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
 
-        opt_prob += p.lpSum([q[(h,s,a)] * ( max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125.0, 0) + max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.9, 0)) 
-                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
+        opt_prob += p.lpSum([q[(h,s,a)] * ( max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125.0, 0)) 
+                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
+
+        opt_prob += p.lpSum([q[(h,s,a)] * ( max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.9, 0)) 
+                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT2 <= 0 
+
 
         # opt_prob += p.lpSum([q[(h,s,a)] * self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
             
@@ -861,7 +871,7 @@ class utils:
         #print(p.LpStatus[status])   # The solution status
         if p.LpStatus[status] != 'Optimal':
             print("No optimal solution found!")
-            return None, 0, 0, 0, p.LpStatus[status]
+            return None, 0, 0, 0, 0, p.LpStatus[status]
 
         #print(opt_prob)
         # print("printing best value constrained:", p.value(opt_prob.objective))
@@ -890,11 +900,12 @@ class utils:
                 #optimal_policy[s,h] = int(np.argmax(probs))
                                                                                                                                                                   
         if ep != 0:
-            return opt_policy, 0, 0, 0
+            return opt_policy, 0, 0, 0, 0, p.LpStatus[status]
         
         # calculate the results to double check with the results obtained from self.FiniteHorizon_Policy_evaluation()
         val_policy = 0
-        con_policy = 0
+        con1_policy = 0
+        con2_policy = 0
         for h in range(self.EPISODE_LENGTH):
          for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
@@ -905,7 +916,8 @@ class utils:
                     
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
                 # con_policy  += opt_q[h,s,a]*(max(0, 110-self.C[s][a]) + max(0, self.C[s][a]-125)) # since the cost here is the SBP feedback
-                con_policy  += opt_q[h,s,a]*( max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) + max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.9)) # since the cost here is the SBP feedback
+                con1_policy  += opt_q[h,s,a]*( max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) ) # since the cost here is the SBP feedback
+                con2_policy  += opt_q[h,s,a]*( max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.9)) # since the cost here is the hba1c feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
@@ -914,12 +926,13 @@ class utils:
         print(msg, p.LpStatus[status], 
                 "- best value constrained:", round(p.value(opt_prob.objective),4), 
                 ", value from the conLPsolver: value of policy =", round(val_policy,4), 
-                ", cost of policy =", round(con_policy,4))
+                ", cost1 of policy =", round(con1_policy,4),
+                ", cost2 of policy =", round(con2_policy,4))
 
         # evaluate the optimal policy using finite horizon policy evaluation
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2) 
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2) 
                                                                                                                                                                           
-        return opt_policy, value_of_policy, cost_of_policy, q_policy, p.LpStatus[status]
+        return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, q_policy, p.LpStatus[status]
                                                                                                                                                                                   
                                                                                                                                                                                   
                                                                                                                                                                                   
@@ -968,11 +981,17 @@ class utils:
                                                            for s_1 in self.Psparse[s][a]])
 
         # Constraints equation 18(b)                                  
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c1_k[s][a]+c2_k[s][a]) 
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c1_k[s][a]) 
                                             for h in range(self.EPISODE_LENGTH) 
                                             for s in range(self.N_STATES) 
                                             for a in self.ACTIONS[s] 
-                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT <= 0
+                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT1 <= 0
+
+        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c2_k[s][a]) 
+                                            for h in range(self.EPISODE_LENGTH) 
+                                            for s in range(self.N_STATES) 
+                                            for a in self.ACTIONS[s] 
+                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT2 <= 0
         
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -1000,7 +1019,7 @@ class utils:
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
             # print(p.LpStatus[status])
-            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS))
+            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS))
                                                                                                                                                                                                                                                   
         for h in range(self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -1041,10 +1060,10 @@ class utils:
                     for a in self.ACTIONS[s]:
                         opt_policy[s,h,a] = opt_policy[s,h,a]/sum_prob # normalize the policy to make sure the sum of the probabilities is 1
 
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
-        return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
+        return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, p.LpStatus[status], q_policy
 
 
     def compute_extended_LP_random(self,):
@@ -1056,10 +1075,10 @@ class utils:
                 for a in self.ACTIONS[s]:
                     opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
 
-        q_policy, value_of_policy, cost_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
-        return opt_policy, value_of_policy, cost_of_policy, 'Optimal', q_policy
+        return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, 'Optimal', q_policy
 
 
     
@@ -1315,21 +1334,26 @@ class utils:
         # results to be returned
         q = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
         v = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # v(s,h), expected cumulative value of the calculated optimal policy
-        c = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
+        c1 = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
+        c2 = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
 
         P_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) # P_policy(s,h,s_1), probability of being in state s_1 at time h+1 given that we are in state s at time h and we follow the optimal policy
         R_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # R_policy(s,h), expected reward of being in state s at time h given that we follow the optimal policy
-        C_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # C_policy(s,h), expected cost of being in state s at time h given that we follow the optimal policy
+        C1_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # C_policy(s,h), expected cost of being in state s at time h given that we follow the optimal policy
+        C2_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # C_policy(s,h), expected cost of being in state s at time h given that we follow the optimal policy
 
         # initialize the last state for the value and cost, and q
         for s in range(self.N_STATES):
-            x = 0
+            x1 = 0
+            x2 = 0
             for a in self.ACTIONS[s]:
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C[s][a]) + max(0, C[s][a]-125)) 
-                x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) + max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # hba1c
+                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp
+                x2 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # hba1c
 
-            c[s, self.EPISODE_LENGTH-1] = x #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
+            c1[s, self.EPISODE_LENGTH-1] = x1 #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
+            c2[s, self.EPISODE_LENGTH-1] = x2 
 
             for a in self.ACTIONS[s]:
                 q[s, self.EPISODE_LENGTH-1, a] = R[s][a]
@@ -1339,15 +1363,19 @@ class utils:
         for h in range(self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
                 x = 0
-                y = 0
+                y1 = 0
+                y2 = 0
                 for a in self.ACTIONS[s]:
                     x += policy[s,h,a]*R[s][a]
                     # y += policy[s,h,a]*C[s][a]
                     # y += policy[s,h,a]*(max(0, 110-C[s][a]) + max(0, C[s][a]-125))
-                    y += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) + max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # hba1c deviation
+                    y1 += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp deviation
+                    y2 += policy[s,h,a]*(max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9))
 
                 R_policy[s,h] = x # expected reward of the state s at time h under the policy
-                C_policy[s,h] = y # expected cost of the state s at time h under the policy
+                C1_policy[s,h] = y1 # expected cost of the state s at time h under the policy
+                C2_policy[s,h] = y2 # expected cost of the state s at time h under the policy
+
                 for s_1 in range(self.N_STATES):
                     z = 0
                     for a in self.ACTIONS[s]:
@@ -1357,7 +1385,8 @@ class utils:
         # going backwards in timesteps to calculate the cumulative value and cost of the policy
         for h in range(self.EPISODE_LENGTH-2,-1,-1):
             for s in range(self.N_STATES):
-                c[s,h] = C_policy[s,h] + np.dot(P_policy[s,h,:], c[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy
+                c1[s,h] = C1_policy[s,h] + np.dot(P_policy[s,h,:], c1[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy
+                c2[s,h] = C2_policy[s,h] + np.dot(P_policy[s,h,:], c2[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy
                 for a in self.ACTIONS[s]:
                     z = 0
                     for s_ in range(self.N_STATES):
@@ -1366,7 +1395,7 @@ class utils:
                 v[s,h] = np.dot(q[s, h, :],policy[s, h, :]) # expected cumulative value, regardless of the action taken  
         #print("evaluation",v)                
 
-        return q, v, c
+        return q, v, c1, c2
 
 
     def compute_qVals_EVI(self, Rx):

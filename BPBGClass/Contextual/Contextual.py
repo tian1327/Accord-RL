@@ -78,7 +78,7 @@ if os.path.exists(old_filename):
 with open('output/model_contextual_BPBG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
-    CONSTRAINT_list, C_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
+    CONSTRAINT1_list, C1_b_list, CONSTRAINT2_list, C2_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
@@ -91,8 +91,8 @@ C2_model = pickle.load(open('output/A1C_feedback_estimator_BPBG.pkl', 'rb'))
 
 # CONSTRAINT = RUN_NUMBER # +++++
 
-CONSTRAINT = CONSTRAINT_list[8]
-C_b = C_b_list[8]
+CONSTRAINT = CONSTRAINT1_list[-1]
+C_b = C1_b_list[-1]
 
 Cb = C_b
 #Cb = 150
@@ -119,7 +119,8 @@ NUMBER_SIMULATIONS = int(NUMBER_SIMULATIONS)
 ACTIONS = np.arange(N_ACTIONS)
 
 ObjRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
-ConRegret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
+Con1Regret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
+Con2Regret2 = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 NUMBER_INFEASIBILITIES = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES))
 
 L = math.log(2 * N_STATES * N_ACTIONS * EPISODE_LENGTH * NUMBER_EPISODES / DELTA) # for transition probabilities P_hat
@@ -135,7 +136,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
 
     # for empirical estimate of transition probabilities P_hat
     ep_count = np.zeros((N_STATES, N_ACTIONS)) 
@@ -150,7 +151,8 @@ for sim in range(NUMBER_SIMULATIONS):
     ep_cvdrisk = [] # record the CVDRisk for each step in a episode
 
     objs = [] # objective regret for current run
-    cons = []
+    cons1 = []
+    cons2 = []
     R_est_err = []
     C1_est_err = [] # SBP feedback error
     C2_est_err = [] # HbA1c feedback error
@@ -158,6 +160,8 @@ for sim in range(NUMBER_SIMULATIONS):
     min_eign_sbp_list = []
     min_eign_hba1c_list = []
 
+    max_cost1 = 0
+    max_cost2 = 0
     select_baseline_policy_ct = 0
     episode = 0
     while episode < NUMBER_EPISODES:
@@ -178,20 +182,22 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.update_mu(s_idx_init)
         # print('\ns_code =', s_code, ', s_idx_init =', s_idx_init)
 
-        CONSTRAINT = CONSTRAINT_list[s_idx_init]
-        Cb = C_b_list[s_idx_init]
-        util_methods.setConstraint(CONSTRAINT)
-        util_methods.setCb(Cb)        
+        CONSTRAINT1 = CONSTRAINT1_list[s_idx_init]
+        CONSTRAINT2 = CONSTRAINT2_list[s_idx_init]
+        C1b = C1_b_list[s_idx_init]
+        C2b = C2_b_list[s_idx_init]
+        util_methods.setConstraint(CONSTRAINT1, CONSTRAINT2)
+        util_methods.setCb(C1b, C2b)        
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
 
         # get the optimal and baseline policy for current patient with context_vec, and initial state s_idx
-        opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
+        opt_policy_con, opt_value_LP_con, opt_cost1_LP_con, opt_cost2_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
 
-        util_methods.update_CONSTRAINT(Cb) # set the C to Cb for calculating the baseline policy
-        pi_b, val_b, cost_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
-        util_methods.update_CONSTRAINT(CONSTRAINT) # reset the C to the original value
+        util_methods.update_CONSTRAINT(C1b, C2b) # set the C to Cb for calculating the baseline policy
+        pi_b, val_b, cost1_b, cost2_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
+        util_methods.update_CONSTRAINT(CONSTRAINT1, CONSTRAINT2) # reset the C to the original value
 
         util_methods.update_episode(episode) # update the episode number for the utility methods
         
@@ -202,7 +208,8 @@ for sim in range(NUMBER_SIMULATIONS):
         if episode <= K0: # use the safe base policy when the episode is less than K0
             pi_k = pi_b
             val_k = val_b
-            cost_k = cost_b
+            cost1_k = cost1_b
+            cost2_k = cost2_b
             q_k = q_b
 
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
@@ -222,9 +229,9 @@ for sim in range(NUMBER_SIMULATIONS):
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
             if random_action:
-                pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
+                pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
             else:
-                pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+                pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
             
             t2 = time.time()
             dtime = t2 - t1
@@ -238,7 +245,8 @@ for sim in range(NUMBER_SIMULATIONS):
 
                 pi_k = pi_b
                 val_k = val_b
-                cost_k = cost_b
+                cost1_k = cost1_b
+                cost2_k = cost2_b
                 q_k = q_b
         
         R_est_err.append(R_est_error)
@@ -248,25 +256,38 @@ for sim in range(NUMBER_SIMULATIONS):
         min_eign_sbp_list.append(min_eign_sbp)
         min_eign_hba1c_list.append(min_eign_hba1c)
 
+        max_cost1 = max(max_cost1, cost1_k[s_idx_init, 0])
+        max_cost2 = max(max_cost2, cost2_k[s_idx_init, 0])
+        print('s_idx_init={}, cost1_k[s_idx_init, 0]={:.2f}, CONS1={:.2f}, max_cost1={:.2f}, cost2_k[s_idx_init, 0]={:.2f}, CONS2={:.2f}, max_cost2={:.2f},'.format(
+               s_idx_init, cost1_k[s_idx_init, 0], CONSTRAINT1, max_cost1, cost2_k[s_idx_init, 0], CONSTRAINT2, max_cost2)) 
+
         if episode == 0:
             ObjRegret2[sim, episode] = abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # for episode 0, calculate the objective regret, we care about the value of a policy at the initial state
-            ConRegret2[sim, episode] = max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # constraint regret, we care about the cumulative cost of a policy at the initial state
+            Con1Regret2[sim, episode] = max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1) # constraint regret, we care about the cumulative cost of a policy at the initial state
+            Con2Regret2[sim, episode] = max(0, cost2_k[s_idx_init, 0] - CONSTRAINT2)
+
             objs.append(ObjRegret2[sim, episode])
-            cons.append(ConRegret2[sim, episode])
-            if cost_k[s_idx_init, 0] > CONSTRAINT:
+            cons1.append(Con1Regret2[sim, episode])
+            cons2.append(Con2Regret2[sim, episode])
+
+            if cost1_k[s_idx_init, 0] > CONSTRAINT1 or cost2_k[s_idx_init, 0] > CONSTRAINT2:
                 NUMBER_INFEASIBILITIES[sim, episode] = 1
         else:
             ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]) # calculate the objective regret, note this is cumulative sum upto k episode, beginninng of page 8 in the paper
-            ConRegret2[sim, episode] = ConRegret2[sim, episode - 1] + max(0, cost_k[s_idx_init, 0] - CONSTRAINT) # cumulative sum of constraint regret
+            Con1Regret2[sim, episode] = Con1Regret2[sim, episode - 1] + max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1) # cumulative sum of constraint regret
+            Con2Regret2[sim, episode] = Con2Regret2[sim, episode - 1] + max(0, cost2_k[s_idx_init, 0] - CONSTRAINT2)
             objs.append(ObjRegret2[sim, episode])
-            cons.append(ConRegret2[sim, episode])
-            if cost_k[s_idx_init, 0] > CONSTRAINT:
-               NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+            cons1.append(Con1Regret2[sim, episode])
+            cons2.append(Con2Regret2[sim, episode])
+
+            if cost1_k[s_idx_init, 0] > CONSTRAINT1 or cost2_k[s_idx_init, 0] > CONSTRAINT2:
+                NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
             else:
                 NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
+        
 
-        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, ConsRegt = {:.2f}, Infeas = {}, Infeas in EXLP = {}, Time = {:.2f}\n'.format(
-              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], ConRegret2[sim, episode], 
+        print('RUN_NUMBER: {}, Episode {}, s_idx_init= {}, ObjRegt = {:.2f}, Cons1Regt = {:.2f}, Cons2Regt = {:.2f}, Infeas = {}, Infeas in EXLP = {}, Time = {:.2f}\n'.format(
+              RUN_NUMBER, episode, s_idx_init, ObjRegret2[sim, episode], Con1Regret2[sim, episode], Con2Regret2[sim, episode], 
               NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime))
 
         # reset the counters
@@ -324,10 +345,11 @@ for sim in range(NUMBER_SIMULATIONS):
 
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
             objs = []
-            cons = []
+            cons1 = []
+            cons2 = []
             R_est_err = []
             C1_est_err = []
             C2_est_err = []
@@ -338,18 +360,20 @@ for sim in range(NUMBER_SIMULATIONS):
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+            pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
         
         episode += 1
         
 # take average/std over multiple simulation runs
 ObjRegret_mean = np.mean(ObjRegret2, axis = 0) 
-ConRegret_mean = np.mean(ConRegret2, axis = 0)
+Con1Regret_mean = np.mean(Con1Regret2, axis = 0)
+Con2Regret_mean = np.mean(Con2Regret2, axis = 0)
 ObjRegret_std = np.std(ObjRegret2, axis = 0)
-ConRegret_std = np.std(ConRegret2, axis = 0)
+Con1Regret_std = np.std(Con1Regret2, axis = 0)
+Con2Regret_std = np.std(Con2Regret2, axis = 0)
 
 # save the results as a pickle file
 filename = 'output/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
-    pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, ConRegret_mean, ConRegret_std], f)
+    pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, Con1Regret_mean, Con1Regret_std, Con2Regret_mean, Con2Regret_std], f)
