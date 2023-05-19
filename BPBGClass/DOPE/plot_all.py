@@ -28,7 +28,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
             try:
                 j += 1
                 if label == 'CONTEXTUAL':
-                    [R_est_err, C1_est_err,  C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+                    [R_est_err, C1_est_err,  C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, Con1Regret, Con2Regret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 else:
                     [NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, Con1Regret, Con2Regret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 objs.append(ObjRegret)
@@ -75,16 +75,17 @@ NUMBER_EPISODES_o = 5000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
-    NUMBER_EPISODES_o = int(sys.argv[1]) + 1
+    NUMBER_EPISODES_o = int(sys.argv[1])
 
 L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
-            #'../Contextual/output/CONTEXTUAL_opsrl100.pkl',
-           'output/DOPE_opsrl100.pkl',
-           'output/DOPE_opsrl100.pkl',
+           '../Contextual/output/CONTEXTUAL_opsrl100.pkl',
+           #'output/DOPE_opsrl100.pkl', # this RUN# 100 has 39 Cons1Regret, thus not used
+           #'output/DOPE_opsrl200.pkl',
+           'output/DOPE_opsrl200.pkl', # good DOPE, increased K0 to 1000, no Cons1Regret
            'output/OptPessLP_opsrl100.pkl', 
            'output/OptCMDP_opsrl100.pkl']
 

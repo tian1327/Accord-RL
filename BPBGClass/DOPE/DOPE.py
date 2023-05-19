@@ -17,7 +17,7 @@ NUMBER_EPISODES = 3e4
 alpha_k = 0.3
 
 use_gurobi = False
-RUN_NUMBER = 100 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
+RUN_NUMBER = 200 #Change this field to set the seed for the experiment, and change the CONSTRAINT value
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
@@ -67,7 +67,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * N_STATES**2 *N_ACTIONS *EPISODE_LENGTH**4/((CONSTRAINT - Cb)**2) # equation in Page 7 for DOPE paper
 # K0 = -1
-#K0 = 1000
+K0 = 1000
 
 print()
 print("alpha_k =", alpha_k)
