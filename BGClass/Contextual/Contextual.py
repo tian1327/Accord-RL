@@ -90,8 +90,8 @@ C_model = pickle.load(open('output/A1C_feedback_estimator_BG.pkl', 'rb'))
 
 # CONSTRAINT = RUN_NUMBER # +++++
 
-CONSTRAINT = CONSTRAINT_list[2]
-C_b = C_b_list[2]
+CONSTRAINT = CONSTRAINT_list[-1]
+C_b = C_b_list[-1]
 
 Cb = C_b
 #Cb = 150

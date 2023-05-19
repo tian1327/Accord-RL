@@ -90,7 +90,7 @@ fn_list = [
            'output/OptCMDP_opsrl100.pkl']
 
 data_list = []
-label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
+label_list = ['COPS-BPBG', 'DOPE', 'OptPessLP', 'OptCMDP']
 color_list = ['red', 'blue', 'green', 'SaddleBrown']
 marker_list = ['D', 'o', 's', 'v']
 for fn in fn_list:
@@ -125,8 +125,8 @@ for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list)
     con1_opsrl_mean = data['con1_opsrl_mean']
     con2_opsrl_mean = data['con2_opsrl_mean']
     axs[0].plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
-    axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"-SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
-    axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'-HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"_SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'_HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
 
 axs[0].grid()
 axs[0].ticklabel_format(style='sci', axis='both', scilimits=(0,0))

@@ -79,7 +79,7 @@ fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl150.pkl',
            'output_final/OptCMDP_opsrl150.pkl']
 
 data_list = []
-label_list = ['COPS', 'DOPE', 'OptPessLP', 'OptCMDP']
+label_list = ['COPS-BP', 'DOPE', 'OptPessLP', 'OptCMDP']
 color_list = ['red', 'blue', 'green', 'SaddleBrown']
 marker_list = ['D', 'o', 's', 'v']
 for fn in fn_list:
@@ -132,5 +132,6 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w') 
 plt.show()
+plt.savefig("BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w') 
+print('Figure saved: BPClass_regrets.png')
