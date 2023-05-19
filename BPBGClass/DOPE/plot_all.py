@@ -71,7 +71,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
 
 
 NUMBER_SIMULATIONS = 1 
-NUMBER_EPISODES_o = 5000
+NUMBER_EPISODES_o = 30000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
@@ -82,15 +82,15 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
-           '../Contextual/output/CONTEXTUAL_opsrl100.pkl',
+           '../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
            #'output/DOPE_opsrl100.pkl', # this RUN# 100 has 39 Cons1Regret, thus not used
            #'output/DOPE_opsrl200.pkl',
-           'output/DOPE_opsrl200.pkl', # good DOPE, increased K0 to 1000, no Cons1Regret
-           'output/OptPessLP_opsrl100.pkl', 
-           'output/OptCMDP_opsrl100.pkl']
+           'output_final/DOPE_opsrl200.pkl', # good DOPE, increased K0 to 1000, no Cons1Regret
+           'output_final/OptPessLP_opsrl100.pkl', 
+           'output_final/OptCMDP_opsrl100.pkl']
 
 data_list = []
-label_list = ['COPS-BPBG', 'DOPE', 'OptPessLP', 'OptCMDP']
+label_list = ['COPS-MM', 'DOPE', 'OptPessLP', 'OptCMDP']
 color_list = ['red', 'blue', 'green', 'SaddleBrown']
 marker_list = ['D', 'o', 's', 'v']
 for fn in fn_list:
@@ -146,5 +146,5 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/regrets.pdf")
+plt.savefig("BPBGClass_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 plt.show()

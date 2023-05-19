@@ -1,6 +1,8 @@
 */.DS_Store
 */.vscode
 output/
+output_final/
+output_final2/
 *.npy
 *.pdf
 *.pkl
