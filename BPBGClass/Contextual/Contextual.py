@@ -357,11 +357,19 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_hba1c_list = []
             min_eign_cvd_list = []
 
+            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+            with open(filename, 'wb') as f:
+                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
+
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
+
+            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+            with open(filename, 'wb') as f:
+                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
         
         episode += 1
         
