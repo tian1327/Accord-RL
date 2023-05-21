@@ -29,7 +29,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
             try:
                 j += 1
                 if label == 'CONTEXTUAL':
-                    [R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+                    [_, _, R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 else:
                     [NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
                 objs.append(ObjRegret)
@@ -63,7 +63,7 @@ def read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o):
 
 
 NUMBER_SIMULATIONS = 1 
-NUMBER_EPISODES_o = 5000
+NUMBER_EPISODES_o = 30000
 
 # take the second input argument as the number of episodes
 if len(sys.argv) > 1:
@@ -73,10 +73,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl150.pkl',
-           'output_final/DOPE_opsrl150.pkl',
-           'output_final/OptPessLP_opsrl150.pkl', 
-           'output_final/OptCMDP_opsrl150.pkl']
+fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
+           'output/DOPE_opsrl150.pkl',
+           'output/OptPessLP_opsrl150.pkl', 
+           'output/OptCMDP_opsrl150.pkl']
 
 data_list = []
 label_list = ['COPS-BP', 'DOPE', 'OptPessLP', 'OptCMDP']
