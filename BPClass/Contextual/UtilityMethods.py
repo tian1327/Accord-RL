@@ -132,6 +132,16 @@ class utils:
             
         # print('self.Psparse: ', self.Psparse)
     
+
+    def set_P_hat(self, P):
+        self.P_hat = P
+
+
+    def set_regr(self, sbp_regr, cvdrisk_regr):
+        self.sbp_regr = sbp_regr
+        self.cvdrisk_regr = cvdrisk_regr
+
+
     def update_episode(self, episode):
         self.episode = episode
 
@@ -175,7 +185,34 @@ class utils:
 
                 # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
 
-            
+
+    # calculate the estimated reward and cost for each state-action pair using the context vector and estimated R and C models
+    def calculate_est_R_C(self):
+
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                state_code = self.state_index_to_code[s]
+                action_code = self.action_index_to_code[a]
+
+                # convert state and action code digit by digit to a list of 0 and 1
+                state_code_list = [int(x) for x in list(state_code)]
+                action_code_list = [int(x) for x in list(action_code)]
+                # concatenate state and action code to the back of context vector
+                R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
+                # print('R_input: ', R_input)
+                # print('R_input.shape: ', R_input.shape)
+
+                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
+                #print('y_pred: ', y_pred)
+
+                reward = 1/(1+np.exp(-y_pred))
+                #print('reward: ', reward)
+
+                self.R_hat[s][a] = reward
+
+                C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
+                cost = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
+                self.C_hat[s][a] = cost           
 
     def add_ep_rewards_costs(self, ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_cvdrisk):
         
@@ -436,7 +473,7 @@ class utils:
     def update_CONSTRAINT(self, new_CONSTRAINT):
         self.CONSTRAINT = new_CONSTRAINT
 
-    def step(self, s, a, h):  # take a step in the environment
+    def step(self, s, a, h, add_noises=True):  # take a step in the environment
         # h is not used here
 
         probs = np.zeros((self.N_STATES))
@@ -445,19 +482,23 @@ class utils:
         next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
 
         # add some noise to the reward and cost
-        # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
-
         y_pred = self.R_y_pred[s][a]
-        noise = np.random.normal(0, 0.05)
-        #noise = 0
+
+        if add_noises:
+            noise = np.random.normal(0, 0.05)
+        else:
+            noise = 0
+
         obs_reward = 1.0 /(1.0+np.exp(-y_pred + noise)) # with noises added
         rew = obs_reward
         # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
         # print('s: ', s, 'a: ', a, 'rew: ', rew, 'self.R[s][a]: ', self.R[s][a])
         # print('self.R[s][a]: ', self.R[s][a])
 
-        #cost = self.C[s][a]
-        cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+        if add_noises:
+            cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+        else:
+            cost = self.C[s][a]
 
         return next_state, rew, cost
 
