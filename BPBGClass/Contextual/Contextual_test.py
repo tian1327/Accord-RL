@@ -24,25 +24,26 @@ context_fea = ['baseline_age', 'female', 'race_whiteother',
                'cvd_hx_baseline', 'baseline_BMI', 'cigarett_baseline_1',
                ]
 
-action_features = ['Bingu', 'Thiaz', 'Sulfon', 'Meglit' ] 
+action_features = ['Diur', 'ACE', 'Bingu', 'Thiaz', ] 
 action_to_med_list = {}
 
-action_to_med_list['0000'] = ['BGClass_None']
-action_to_med_list['1000'] = ['Bingu']
-action_to_med_list['0100'] = ['Thiaz']
-action_to_med_list['0010'] = ['Sulfon']
-action_to_med_list['0001'] = ['Meglit']
-action_to_med_list['1100'] = ['Bingu', 'Thiaz']
-action_to_med_list['1010'] = ['Bingu', 'Sulfon']
-action_to_med_list['1001'] = ['Bingu', 'Meglit']
-action_to_med_list['0110'] = ['Thiaz', 'Sulfon']
-action_to_med_list['0101'] = ['Thiaz', 'Meglit']
-action_to_med_list['0011'] = ['Sulfon', 'Meglit']
-action_to_med_list['1110'] = ['Bingu', 'Thiaz', 'Sulfon']
-action_to_med_list['1101'] = ['Bingu', 'Thiaz', 'Meglit']
-action_to_med_list['1011'] = ['Bingu', 'Sulfon', 'Meglit']
-action_to_med_list['0111'] = ['Thiaz', 'Sulfon', 'Meglit']
-action_to_med_list['1111'] = ['Bingu', 'Thiaz', 'Sulfon', 'Meglit']
+action_to_med_list['0000'] = ['BPBGClass_None']
+action_to_med_list['1000'] = ['Diur']
+action_to_med_list['0100'] = ['ACE']
+action_to_med_list['0010'] = ['Bingu']
+action_to_med_list['0001'] = ['Thiaz']
+action_to_med_list['1100'] = ['Diur', 'ACE']
+action_to_med_list['1010'] = ['Diur', 'Bingu']
+action_to_med_list['1001'] = ['Diur', 'Thiaz']
+action_to_med_list['0110'] = ['ACE', 'Bingu']
+action_to_med_list['0101'] = ['ACE', 'Thiaz']
+action_to_med_list['0011'] = ['Bingu', 'Thiaz']
+action_to_med_list['1110'] = ['Diur', 'ACE', 'Bingu']
+action_to_med_list['1101'] = ['Diur', 'ACE', 'Thiaz']
+action_to_med_list['1011'] = ['Diur', 'Bingu', 'Thiaz']
+action_to_med_list['0111'] = ['ACE', 'Bingu', 'Thiaz']
+action_to_med_list['1111'] = ['Diur', 'ACE', 'Bingu', 'Thiaz']
+
 
 #------------------------------------------------------
 # control parameters
@@ -59,26 +60,30 @@ if len(sys.argv) > 1:
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
-# Initialize:
-with open('output_final2/model_contextual_BG.pkl', 'rb') as f:
+with open('output_final/model_contextual_BPBG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
-    CONSTRAINT, C_b, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
+    CONSTRAINT1_list, C1_b_list, CONSTRAINT2_list, C2_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
 STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
-# load the offline trained true model: CVDRisk_estimator and SBP_feedback_estimator from pickle file
-R_model = pickle.load(open('output_final2/CVDRisk_estimator_BG.pkl', 'rb'))
-C_model = pickle.load(open('output_final2/A1C_feedback_estimator_BG.pkl', 'rb'))
+# load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
+R_model = pickle.load(open('output_final/CVDRisk_estimator_BPBG.pkl', 'rb'))
+C1_model = pickle.load(open('output_final/SBP_feedback_estimator_BPBG.pkl', 'rb'))
+C2_model = pickle.load(open('output_final/A1C_feedback_estimator_BPBG.pkl', 'rb'))
+
 
 # load the estimated hba1c and CVDRisk models from pickle file
-filename = 'output_final2/CONTEXTUAL_BG_regr.pkl'
+filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
 with open(filename, 'rb') as f:
-    [hba1c_regr, cvdrisk_regr] = pickle.load(f)
+    [sbp_regr, hba1c_regr, cvdrisk_regr] = pickle.load(f)
 
-Cb = C_b[-1]
-#Cb = 150
+
+CONSTRAINT = CONSTRAINT1_list[-1]
+C_b = C1_b_list[-1]
+
+Cb = C_b
 
 CONSTRAINT = CONSTRAINT[-1]
 
@@ -99,11 +104,11 @@ M = 0
 print("\nRun the simulation based on learned COPS model")
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+    util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
 
-    util_methods.set_regr(hba1c_regr, cvdrisk_regr)
+    util_methods.set_regr(sbp_regr, hba1c_regr, cvdrisk_regr)
 
     # for logistic regression of CVDRisk_feedback and linear regression SBP_feedback
     maskid_full =[]
@@ -126,8 +131,8 @@ for sim in range(NUMBER_SIMULATIONS):
     ct = 0
     for patient in tqdm(patient_list):
 
-        # if ct >2:
-        #     break
+        if ct >2:
+            break
 
         ct += 1
 
@@ -139,7 +144,6 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
         s_idx_init = CONTEXT_VECTOR_dict[patient][1]
-
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)
 
@@ -268,8 +272,12 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
+        hba1c_discrete_init = CONTEXT_VECTOR_dict[patient][1]
+        # print("sbp_discrete_init =", sbp_discrete_init)
+        s_code = hba1c_discrete_code_dict[str(hba1c_discrete_init)]
+        # print("s_code =", s_code)
 
+        s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)
 

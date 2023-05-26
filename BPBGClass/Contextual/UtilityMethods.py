@@ -161,6 +161,15 @@ class utils:
             
         # print('self.Psparse: ', self.Psparse)
     
+
+    def set_P_hat(self, P):
+        self.P_hat = P
+
+    def set_regr(self, sbp_regr, hba1c_regr, cvdrisk_regr):
+        self.sbp_regr = sbp_regr
+        self.hba1c_regr = hba1c_regr
+        self.cvdrisk_regr = cvdrisk_regr
+
     def setConstraint(self, CONSTRAINT1, CONSTRAINT2):
         self.CONSTRAINT1 = CONSTRAINT1
         self.CONSTRAINT2 = CONSTRAINT2
