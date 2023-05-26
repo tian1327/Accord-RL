@@ -118,6 +118,7 @@ for sim in range(NUMBER_SIMULATIONS):
     print("patient_list[0] =", patient_list[0])
     print("len(patient_list) =", len(patient_list))
 
+    infeasible_ct = 0
     ct = 0
     for patient in tqdm(patient_list):
 
@@ -171,7 +172,17 @@ for sim in range(NUMBER_SIMULATIONS):
             for i, fea in enumerate(context_fea):
                 context_vec_dict_full[fea].append(ep_context_vec[i])
             
-            prob = pi_k[s, h, :]           
+            prob = pi_k[s, h, :]
+
+            if sum(prob) != 1:
+                print("sum(prob) =", sum(prob))
+                print("prob =", prob)
+                print('Warning: The probability does not sum to 1')
+                infeasible_ct += 1
+
+                # set uniform probability
+                prob = np.ones(N_ACTIONS)/N_ACTIONS
+            
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
 
             a_list.append(a)
@@ -212,6 +223,8 @@ for sim in range(NUMBER_SIMULATIONS):
     # print('df.info() =', df.info())
 
     # df.to_csv('output_final/Contextual_test_BPClass.csv', index=False)
+
+    print('+++++Infeasible count =', infeasible_ct)
 
 
 #--------------------------------------- Run the simulation for Clinician 

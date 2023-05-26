@@ -116,3 +116,5 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 2. Run `python Contextual_test.py 1` to run the simulation of COPS and Clinician
    * the results are saved to `output_final/Contextual_test_BPClass.csv`
 
+3. Copied the generated simulation output csv files to `NumericalResults/` folder
+4. 
