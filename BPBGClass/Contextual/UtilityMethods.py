@@ -980,7 +980,7 @@ class utils:
                                                                                                                                                                                   
                                                                                                                                                                                   
     # ++++ compute the optimal policy using the extended Linear Programming +++
-    def compute_extended_LP(self,):
+    def compute_extended_LP(self, inference=False):
         """
         - solve equation (10) CMDP using extended Linear Programming
         - optimal policy opt_policy[s,h,a] is the probability of taking action a at state s at time h
@@ -1046,14 +1046,15 @@ class utils:
         for s in range(self.N_STATES):
             q_list = [z[(0,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
             opt_prob += p.lpSum(q_list) - self.mu[s] == 0 # constraint (18d) in the paper
-                                                                                                                                                                                                                      
-        for h in range(self.EPISODE_LENGTH):
-            for s in range(self.N_STATES):
-                for a in self.ACTIONS[s]:
-                    for s_1 in self.Psparse[s][a]:                
-                        opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
-                        opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
-                                                                                                                                                                                                                                     
+
+        if not inference:                                                                                                                                                                           
+            for h in range(self.EPISODE_LENGTH):
+                for s in range(self.N_STATES):
+                    for a in self.ACTIONS[s]:
+                        for s_1 in self.Psparse[s][a]:                
+                            opt_prob += z[(h,s,a,s_1)] - (self.P_hat[s][a][s_1] + self.alpha_p * self.beta_prob[s][a,s_1]) *  p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0  # equation (18f)
+                            opt_prob += -z[(h,s,a,s_1)] + (self.P_hat[s][a][s_1] - self.alpha_p * self.beta_prob[s][a,s_1])* p.lpSum([z[(h,s,a,y)] for y in self.Psparse[s][a]]) <= 0 # equation (18g)
+                                                                                                                                                                                                                                        
         if self.use_gurobi:
             status = opt_prob.solve(p.GUROBI_CMD(gapRel=0.01, msg = 0)) # solve the Extended LP problem
         else:

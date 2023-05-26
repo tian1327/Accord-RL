@@ -141,7 +141,7 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.set_P_hat(P) 
         
         # compute the optimal policy using the learned R_hat and C_hat, and P_hat, all confidence intervals are 0 
-        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() 
+        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP(True) 
          
         # reset the data collector
         visit_num = []
@@ -352,5 +352,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final/Contextual_test_BPClass.csv', index=False)
-    print('Results saved to output_final/Contextual_test_BPClass.csv')
+    df.to_csv('output_final/Contextual_test_BPClass_inference.csv', index=False)
+    print('Results saved to output_final/Contextual_test_BPClass_inference.csv')
