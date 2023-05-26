@@ -105,3 +105,14 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 * All models are run for 3e4 episodes, navigate to each folder and run `python plot_all.py 30000` to compare all models.
 
 * Final results for all 3 cases are stored in folders `output_final/`.
+
+
+#### Compare COPS with Clinician actions and feedback
+
+1. Navigate to `/Contextual` folder for each of the 3 cases, run the `model_contextual.ipynb` again to generate 
+   * `CONTEXT_VECTOR_dict`: dict with each patient's MaskID as key, and values of `context_fea`, `init_state`, `state_index_recorded`, `action_index_recorded`
+   * save the trained `knn_model` and `knn_model_label` and `scaler` to selecting the actions of Clinician with unmatching states
+
+2. Run `python Contextual_test.py 1` to run the simulation of COPS and Clinician
+   * the results are saved to `output_final/Contextual_test_BPClass.csv`
+
