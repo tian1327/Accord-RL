@@ -138,7 +138,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
+        s_idx_init = int(CONTEXT_VECTOR_dict[patient][1])
 
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)
@@ -268,7 +268,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
+        s_idx_init = int(CONTEXT_VECTOR_dict[patient][1])
 
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)

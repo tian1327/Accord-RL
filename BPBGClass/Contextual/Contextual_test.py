@@ -77,8 +77,6 @@ C_b = C1_b_list[-1]
 
 Cb = C_b
 
-CONSTRAINT = CONSTRAINT[-1]
-
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
 print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
@@ -135,9 +133,11 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
-        util_methods.update_mu(s_idx_init)
+        s_idx_init = int(CONTEXT_VECTOR_dict[patient][1])
         # print("s_idx_init =", s_idx_init)
+        # print('type(s_idx_init) =', type(s_idx_init))
+        util_methods.update_mu(s_idx_init)
+
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
@@ -149,7 +149,7 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.set_P_hat(P) 
         
         # compute the optimal policy using the learned R_hat and C_hat, and P_hat, all confidence intervals are 0 
-        pi_k, val_k, cost_k, log, q_k = util_methods.compute_extended_LP() 
+        pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP() 
          
         # reset the data collector
         visit_num = []
@@ -171,7 +171,6 @@ for sim in range(NUMBER_SIMULATIONS):
             for i, fea in enumerate(context_fea):
                 context_vec_dict_full[fea].append(ep_context_vec[i])
             
-
             prob = pi_k[s, h, :]           
             a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
 
@@ -182,10 +181,10 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost1, cost2 = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(-1)
-            ep_hba1c_cont.append(cost) 
+            ep_sbp_cont.append(cost1)
+            ep_hba1c_cont.append(cost2) 
             ep_cvdrisk.append(rew)
 
             s = next_state
@@ -219,17 +218,17 @@ for sim in range(NUMBER_SIMULATIONS):
 print("\nRun the simulation for Clinician")
 
 # load knn model and scalar model from output_final/knn_model.pkl and output_final/scaler_model.pkl
-knn_model = pickle.load(open('output_final2/knn_model.pkl', 'rb'))
-labels = pickle.load(open('output_final2/knn_model_label.pkl', 'rb'))
-scaler_model = pickle.load(open('output_final2/scaler_model.pkl', 'rb'))
+knn_model = pickle.load(open('output_final/knn_model.pkl', 'rb'))
+labels = pickle.load(open('output_final/knn_model_label.pkl', 'rb'))
+scaler_model = pickle.load(open('output_final/scaler_model.pkl', 'rb'))
 
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, R_model, C_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+    util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, use_gurobi) 
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
 
-    util_methods.set_regr(hba1c_regr, cvdrisk_regr)
+    util_methods.set_regr(sbp_regr, hba1c_regr, cvdrisk_regr)
 
     # for logistic regression of CVDRisk_feedback and linear regression SBP_feedback
     maskid_full =[]
@@ -252,8 +251,8 @@ for sim in range(NUMBER_SIMULATIONS):
     ct = 0
     for patient in tqdm(patient_list):
 
-        # if ct >2:
-        #     break
+        if ct >2:
+            break
 
         ct += 1
 
@@ -264,7 +263,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
+        s_idx_init = int(CONTEXT_VECTOR_dict[patient][1])
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)
 
@@ -344,10 +343,10 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost1, cost2 = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(-1)
-            ep_hba1c_cont.append(cost) 
+            ep_sbp_cont.append(cost1)
+            ep_hba1c_cont.append(cost2) 
             ep_cvdrisk.append(rew)
 
             s = next_state
@@ -371,5 +370,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final2/Contextual_test_BGClass.csv', index=False)
-    print('Results saved to output_final2/Contextual_test_BGClass.csv')
+    df.to_csv('output_final/Contextual_test_BPBGClass.csv', index=False)
+    print('Results saved to output_final/Contextual_test_BPBGClass.csv')
