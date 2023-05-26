@@ -121,8 +121,8 @@ for sim in range(NUMBER_SIMULATIONS):
     ct = 0
     for patient in tqdm(patient_list):
 
-        if ct >2:
-            break
+        # if ct >2:
+        #     break
 
         ct += 1
 
@@ -251,8 +251,8 @@ for sim in range(NUMBER_SIMULATIONS):
     ct = 0
     for patient in tqdm(patient_list):
 
-        if ct >2:
-            break
+        # if ct >2:
+        #     break
 
         ct += 1
 
