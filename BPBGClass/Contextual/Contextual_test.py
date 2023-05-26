@@ -72,14 +72,17 @@ with open(filename, 'rb') as f:
     [sbp_regr, hba1c_regr, cvdrisk_regr] = pickle.load(f)
 
 
-CONSTRAINT = CONSTRAINT1_list[-1]
-C_b = C1_b_list[-1]
+CONSTRAINT1 = CONSTRAINT1_list[-1]
+CONSTRAINT2 = CONSTRAINT2_list[-1]
+C1b = C1_b_list[-1]
+C2b = C2_b_list[-1]
 
-Cb = C_b
 
-print("CONSTRAINT =", CONSTRAINT)
-print("Cb =", Cb)
-print("CONSTRAINT - Cb =", CONSTRAINT - Cb)
+print("CONSTRAINT1 =", CONSTRAINT1)
+print("C1b =", C1b)
+print("CONSTRAINT2 =", CONSTRAINT2)
+print("C2b =", C2b)
+
 print("N_STATES =", N_STATES)
 print("N_ACTIONS =", N_ACTIONS)
 
@@ -96,7 +99,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT1, C1b, CONSTRAINT2, C2b, use_gurobi) 
 
     util_methods.set_regr(sbp_regr, hba1c_regr, cvdrisk_regr)
 
@@ -239,7 +242,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
     util_methods = utils(EPS, DELTA, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, state_index_to_code, action_index_to_code,
-                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
+                         EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, CONSTRAINT1, C1b, CONSTRAINT2, C2b, use_gurobi) 
 
     util_methods.set_regr(sbp_regr, hba1c_regr, cvdrisk_regr)
 
