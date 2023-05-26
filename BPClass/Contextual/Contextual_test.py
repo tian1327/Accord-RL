@@ -11,8 +11,6 @@ import sys
 import random
 from tqdm import tqdm
 
-sbp_discrete_code_dict = {'0': '0', '1': '1',
-                          '2': '2', '3': '2',}
 
 context_fea = ['baseline_age', 'female', 'race_whiteother',
                'edu_baseline_1', 'edu_baseline_2', 'edu_baseline_3',
@@ -250,12 +248,8 @@ for sim in range(NUMBER_SIMULATIONS):
         # print("context_vec =", context_vec)
         util_methods.set_context(context_vec) # set the context vector for the current episode
 
-        sbp_discrete_init = CONTEXT_VECTOR_dict[patient][1]
-        # print("sbp_discrete_init =", sbp_discrete_init)
-        s_code = sbp_discrete_code_dict[str(sbp_discrete_init)]
-        # print("s_code =", s_code)
+        s_idx_init = CONTEXT_VECTOR_dict[patient][1]
 
-        s_idx_init = state_code_to_index[s_code]
         util_methods.update_mu(s_idx_init)
         # print("s_idx_init =", s_idx_init)
 
