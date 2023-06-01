@@ -60,7 +60,7 @@ random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 # Initialize:
-with open('output_final2/model_contextual_BG.pkl', 'rb') as f:
+with open('output_final/model_contextual_BG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT, C_b, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
@@ -69,16 +69,15 @@ STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the offline trained true model: CVDRisk_estimator and SBP_feedback_estimator from pickle file
-R_model = pickle.load(open('output_final2/CVDRisk_estimator_BG.pkl', 'rb'))
-C_model = pickle.load(open('output_final2/A1C_feedback_estimator_BG.pkl', 'rb'))
+R_model = pickle.load(open('output_final/CVDRisk_estimator_BG.pkl', 'rb'))
+C_model = pickle.load(open('output_final/A1C_feedback_estimator_BG.pkl', 'rb'))
 
-# load the same patients as used in BPBGClass
-BPBG_patient_list = pickle.load(open('../../BPBGClass/Contextual/output_final/BPBG_mask_id_list.pkl', 'rb'))
-print("len(BPBG_patient_list) =", len(BPBG_patient_list))
-BPBG_patient_set = set(BPBG_patient_list)
+# load the same patients 
+same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
+print("len(same_patient_set) =", len(same_patient_set)) 
 
 # load the estimated hba1c and CVDRisk models from pickle file
-filename = 'output_final2/CONTEXTUAL_BG_regr.pkl'
+filename = 'output_final/CONTEXTUAL_BG_regr.pkl'
 with open(filename, 'rb') as f:
     [hba1c_regr, cvdrisk_regr] = pickle.load(f)
 
@@ -134,7 +133,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # if ct >2:
         #     break
 
-        if patient not in BPBG_patient_set:
+        if patient not in same_patient_set:
             continue
 
         ct += 1
@@ -231,9 +230,9 @@ for sim in range(NUMBER_SIMULATIONS):
 print("\nRun the simulation for Clinician")
 
 # load knn model and scalar model from output_final/knn_model.pkl and output_final/scaler_model.pkl
-knn_model = pickle.load(open('output_final2/knn_model.pkl', 'rb'))
-labels = pickle.load(open('output_final2/knn_model_label.pkl', 'rb'))
-scaler_model = pickle.load(open('output_final2/scaler_model.pkl', 'rb'))
+knn_model = pickle.load(open('output_final/knn_model.pkl', 'rb'))
+labels = pickle.load(open('output_final/knn_model_label.pkl', 'rb'))
+scaler_model = pickle.load(open('output_final/scaler_model.pkl', 'rb'))
 
 for sim in range(NUMBER_SIMULATIONS):
 
@@ -267,7 +266,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # if ct >2:
         #     break
 
-        if patient not in BPBG_patient_set:
+        if patient not in same_patient_set:
             continue
 
         ct += 1
@@ -387,5 +386,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final2/Contextual_test_BGClass_samepatient.csv', index=False)
-    print('Results saved to output_final2/Contextual_test_BGClass_samepatient.csv')
+    df.to_csv('output_final/Contextual_test_BGClass_samepatient.csv', index=False)
+    print('Results saved to output_final/Contextual_test_BGClass_samepatient.csv')

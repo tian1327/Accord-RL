@@ -72,18 +72,18 @@ mark_every_interval = 2000 # marker point interval
 
 # scenario 1: use init-state dependent Constraints
 
-# fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
-#            'output_final/DOPE_opsrl100.pkl',
-#            'output_final/OptPessLP_opsrl100.pkl', 
-#            'output_final/OptCMDP_opsrl100.pkl']
+# fn_list = ['../Contextual/output_final_initstate_dependentC/CONTEXTUAL_opsrl100.pkl',
+#            'output_final_initstate_dependentC/DOPE_opsrl100.pkl',
+#            'output_final_initstate_dependentC/OptPessLP_opsrl100.pkl', 
+#            'output_final_initstate_dependentC/OptCMDP_opsrl100.pkl']
 
 
 # scenario 2: DO NOT use init-state independent Constraints, this is what we use for the paper
 
-fn_list = ['../Contextual/output_final2/CONTEXTUAL_opsrl100.pkl',
-           'output_final2/DOPE_opsrl16.pkl',
-           'output_final2/OptPessLP_opsrl16.pkl', 
-           'output_final2/OptCMDP_opsrl16.pkl']
+fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
+           'output_final/DOPE_opsrl16.pkl',
+           'output_final/OptPessLP_opsrl16.pkl', 
+           'output_final/OptCMDP_opsrl16.pkl']
 
 
 data_list = []

@@ -65,6 +65,9 @@ R_model = pickle.load(open('output_final/CVDRisk_estimator_BPBG.pkl', 'rb'))
 C1_model = pickle.load(open('output_final/SBP_feedback_estimator_BPBG.pkl', 'rb'))
 C2_model = pickle.load(open('output_final/A1C_feedback_estimator_BPBG.pkl', 'rb'))
 
+# load the same patients 
+same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
+print("len(same_patient_set) =", len(same_patient_set)) 
 
 # load the estimated hba1c and CVDRisk models from pickle file
 filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
@@ -127,6 +130,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # if ct >2:
         #     break
+
+        if patient not in same_patient_set:
+            continue
 
         ct += 1
 
@@ -269,6 +275,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # if ct >2:
         #     break
+
+        if patient not in same_patient_set:
+            continue
 
         ct += 1
 

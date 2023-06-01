@@ -62,12 +62,12 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the offline trained true model: CVDRisk_estimator and SBP_feedback_estimator from pickle file
 R_model = pickle.load(open('output_final/CVDRisk_estimator_BP.pkl', 'rb'))
-C_model = pickle.load(open('output_final/SBP_feedback_estimator.pkl', 'rb'))
+C1_model = pickle.load(open('output_final/SBP_feedback_estimator_BP.pkl', 'rb'))
+C2_model = pickle.load(open('output_final/A1C_feedback_estimator_BP.pkl', 'rb'))
 
-# load the same patients as used in BPBGClass
-BPBG_patient_list = pickle.load(open('../../BPBGClass/Contextual/output_final/BPBG_mask_id_list.pkl', 'rb'))
-print("len(BPBG_patient_list) =", len(BPBG_patient_list))
-BPBG_patient_set = set(BPBG_patient_list)
+# load the same patients 
+same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
+print("len(same_patient_set) =", len(same_patient_set)) 
 
 # load the estimated SBP and CVDRisk models from pickle file
 filename = 'output_final/CONTEXTUAL_BP_regr.pkl'
@@ -119,12 +119,27 @@ for sim in range(NUMBER_SIMULATIONS):
     print("patient_list[0] =", patient_list[0])
     print("len(patient_list) =", len(patient_list))
 
+    # BP_patient_set = set(patient_list)
+
+    # # get the difference between BPBG and BPClass
+    # diff = BPBG_patient_set - BP_patient_set
+    # print("len(diff) =", len(diff))
+    # print("diff =", diff)
+
+    # # get the intersection of the BPBG and BPClass
+    # inter = BPBG_patient_set & BP_patient_set
+    # print("len(inter) =", len(inter))
+    # # save the intersection to file
+    # with open('../../NumericalResults/samepatient_maskid.pkl', 'wb') as f:
+    #     pickle.dump(list(inter), f)
+
+
     for patient in tqdm(patient_list):
 
         # if idx >10:
         #     break
 
-        if patient not in BPBG_patient_set:
+        if patient not in same_patient_set:
             continue
 
         # print("patient =", patient)
@@ -246,7 +261,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # if idx >10:
         #     break
 
-        if patient not in BPBG_patient_set:
+        if patient not in same_patient_set:
             continue
 
         # print("\n +++++patient =", patient)

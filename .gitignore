@@ -2,7 +2,7 @@
 */.vscode
 output/
 output_final/
-output_final2/
+output_final_initstate_dependentC/
 *.npy
 *.pdf
 *.pkl
