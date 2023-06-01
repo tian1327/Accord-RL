@@ -62,8 +62,8 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the offline trained true model: CVDRisk_estimator and SBP_feedback_estimator from pickle file
 R_model = pickle.load(open('output_final/CVDRisk_estimator_BP.pkl', 'rb'))
-C1_model = pickle.load(open('output_final/SBP_feedback_estimator_BP.pkl', 'rb'))
-C2_model = pickle.load(open('output_final/A1C_feedback_estimator_BP.pkl', 'rb'))
+C_model = pickle.load(open('output_final/SBP_feedback_estimator_BP.pkl', 'rb'))
+C_a1c_model = pickle.load(open('output_final/A1C_feedback_estimator_BP.pkl', 'rb'))
 
 # load the same patients 
 same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
@@ -113,6 +113,7 @@ for sim in range(NUMBER_SIMULATIONS):
     action_code_full = [] # record the action code for each step in a episode
     med_list_full = [] # record the med for each step in a episode
     sbp_cont_full = [] # record the SBP feedback continuous for each step in a episode
+    hba1c_cont_full = [] # record the HbA1c feedback continuous for each step in a episode
     cvdrisk_full = [] # record the CVDRisk for each step in a episode
 
     patient_list = list(CONTEXT_VECTOR_dict.keys())
@@ -157,6 +158,8 @@ for sim in range(NUMBER_SIMULATIONS):
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
 
+        util_methods.calculate_true_C_a1c(context_vec, C_a1c_model)
+
         # calculate the R and C based on the estimated R and C models, regenerate for each episode/patient_hat 
         util_methods.calculate_est_R_C()
         # Notice here, we should have used the empirical estimates of P after learning for 3e4 episodes, but we use the true P here for simplicity
@@ -170,6 +173,7 @@ for sim in range(NUMBER_SIMULATIONS):
         visit_num = []
         ep_context_vec = context_vec # record the context vector for the current episode
         ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+        ep_hba1c_cont = [] # record the HbA1c feedback continuous for each step in a episode
         a_list = []
         ep_action_code = [] # record the action code for each step in a episode
         ep_med_list = []
@@ -196,9 +200,10 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost, cost_a1c = util_methods.step(s, a, h, False, True) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(cost) 
+            ep_sbp_cont.append(cost)
+            ep_hba1c_cont.append(cost_a1c) 
             ep_cvdrisk.append(rew)
 
             s = next_state
@@ -209,6 +214,7 @@ for sim in range(NUMBER_SIMULATIONS):
         action_code_full.extend(ep_action_code)
         med_list_full.extend(ep_med_list)
         sbp_cont_full.extend(ep_sbp_cont)
+        hba1c_cont_full.extend(ep_hba1c_cont)
         cvdrisk_full.extend(ep_cvdrisk)
 
 
@@ -220,7 +226,9 @@ for sim in range(NUMBER_SIMULATIONS):
     df['action_code'] = action_code_full
     df['med_list'] = med_list_full
     df['sbp_fb'] = sbp_cont_full
+    df['hba1c_fb'] = hba1c_cont_full
     df['cvdrisk_fb'] = cvdrisk_full
+
     # print('df.info() =', df.info())
 
 #--------------------------------------- Run the simulation for Clinician 
@@ -250,6 +258,7 @@ for sim in range(NUMBER_SIMULATIONS):
     action_code_full = [] # record the action code for each step in a episode
     med_list_full = [] # record the med for each step in a episode
     sbp_cont_full = [] # record the SBP feedback continuous for each step in a episode
+    hba1c_cont_full = [] # record the HbA1c feedback continuous for each step in a episode
     cvdrisk_full = [] # record the CVDRisk for each step in a episode
 
     patient_list = list(CONTEXT_VECTOR_dict.keys())
@@ -282,11 +291,14 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
+
+        util_methods.calculate_true_C_a1c(context_vec, C_a1c_model)
          
         # reset the data collector
         visit_num = []
         ep_context_vec = context_vec # record the context vector for the current episode
         ep_sbp_cont = [] # record the SBP feedback continuous for each step in a episode
+        ep_hba1c_cont = [] # record the HbA1c feedback continuous for each step in a episode
         a_list = []
         ep_action_code = [] # record the action code for each step in a episode
         ep_med_list = []
@@ -351,9 +363,10 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost, cost_a1c = util_methods.step(s, a, h, False, True) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(cost) 
+            ep_sbp_cont.append(cost)
+            ep_hba1c_cont.append(cost_a1c) 
             ep_cvdrisk.append(rew)
 
             s = next_state
@@ -364,6 +377,7 @@ for sim in range(NUMBER_SIMULATIONS):
         action_code_full.extend(ep_action_code)
         med_list_full.extend(ep_med_list)
         sbp_cont_full.extend(ep_sbp_cont)
+        hba1c_cont_full.extend(ep_hba1c_cont)
         cvdrisk_full.extend(ep_cvdrisk)
 
 
@@ -372,6 +386,7 @@ for sim in range(NUMBER_SIMULATIONS):
     df['action_code_cln'] = action_code_full
     df['med_list_cln'] = med_list_full
     df['sbp_fb_cln'] = sbp_cont_full
+    df['hba1c_fb_cln'] = hba1c_cont_full
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 

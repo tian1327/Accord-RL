@@ -21,6 +21,7 @@ class utils:
         self.R_obs = np.zeros((self.N_STATES,self.N_ACTIONS)) # observed CVDRisk with noises added
         self.R_y_pred = np.zeros((self.N_STATES,self.N_ACTIONS)) # predicted value from CVDRisk regression model
         self.C = np.zeros((self.N_STATES,self.N_ACTIONS))
+        self.C_a1c = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_model = R_model
         self.C_model = C_model
         self.CONTEXT_VECTOR = None
@@ -185,6 +186,18 @@ class utils:
 
                 # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
 
+    def calculate_true_C_a1c(self, context_vec, C_a1c_model):
+
+        for s in range(self.N_STATES):
+            for a in self.ACTIONS[s]:
+                state_code = self.state_index_to_code[s]
+                action_code = self.action_index_to_code[a]
+                # convert state and action code digit by digit to a list of 0 and 1
+                state_code_list = [int(x) for x in list(state_code)]
+                action_code_list = [int(x) for x in list(action_code)]
+
+                C_input = np.concatenate((context_vec, np.array(action_code_list)), axis=0)
+                self.C_a1c[s][a] = C_a1c_model.predict(C_input.reshape(1, -1))
 
     # calculate the estimated reward and cost for each state-action pair using the context vector and estimated R and C models
     def calculate_est_R_C(self):
@@ -473,7 +486,7 @@ class utils:
     def update_CONSTRAINT(self, new_CONSTRAINT):
         self.CONSTRAINT = new_CONSTRAINT
 
-    def step(self, s, a, h, add_noises=True):  # take a step in the environment
+    def step(self, s, a, h, add_noises=True, get_a1c=False):  # take a step in the environment
         # h is not used here
 
         probs = np.zeros((self.N_STATES))
@@ -495,12 +508,23 @@ class utils:
         # print('s: ', s, 'a: ', a, 'rew: ', rew, 'self.R[s][a]: ', self.R[s][a])
         # print('self.R[s][a]: ', self.R[s][a])
 
-        if add_noises:
-            cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
-        else:
-            cost = self.C[s][a]
+        if not get_a1c:
+            if add_noises:
+                cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+            else:
+                cost = self.C[s][a]
 
-        return next_state, rew, cost
+            return next_state, rew, cost
+        
+        else:
+            if add_noises:
+                cost = self.C[s][a] + np.random.normal(0, 5) # this is the SBP feedback, not the deviation
+                # cost_a1c = self.C_a1c[s][a] + np.random.normal(0, 0.05) # this is the SBP feedback, not the deviation
+            else:
+                cost = self.C[s][a]
+                cost_a1c = self.C_a1c[s][a]
+
+            return next_state, rew, cost, cost_a1c            
 
 
     def update_mu(self, init_state):

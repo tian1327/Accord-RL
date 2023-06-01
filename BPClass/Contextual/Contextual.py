@@ -86,7 +86,7 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
 R_model = pickle.load(open('output/CVDRisk_estimator_BP.pkl', 'rb'))
-C_model = pickle.load(open('output/SBP_feedback_estimator.pkl', 'rb'))
+C_model = pickle.load(open('output/SBP_feedback_estimator_BP.pkl', 'rb'))
 
 
 Cb = C_b

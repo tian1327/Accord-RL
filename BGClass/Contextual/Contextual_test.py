@@ -71,6 +71,8 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 # load the offline trained true model: CVDRisk_estimator and SBP_feedback_estimator from pickle file
 R_model = pickle.load(open('output_final/CVDRisk_estimator_BG.pkl', 'rb'))
 C_model = pickle.load(open('output_final/A1C_feedback_estimator_BG.pkl', 'rb'))
+C_sbp_model = pickle.load(open('output_final/SBP_feedback_estimator_BG.pkl', 'rb'))
+
 
 # load the same patients 
 same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
@@ -153,6 +155,8 @@ for sim in range(NUMBER_SIMULATIONS):
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
 
+        util_methods.calculate_true_C_sbp(context_vec, C_sbp_model)
+
         # calculate the R and C based on the estimated R and C models, regenerate for each episode/patient_hat 
         util_methods.calculate_est_R_C()
         # Notice here, we should have used the empirical estimates of P after learning for 3e4 episodes, but we use the true P here for simplicity
@@ -193,9 +197,9 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost, cost_sbp = util_methods.step(s, a, h, False, True) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(-1)
+            ep_sbp_cont.append(cost_sbp)
             ep_hba1c_cont.append(cost) 
             ep_cvdrisk.append(rew)
 
@@ -289,7 +293,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
         util_methods.calculate_true_R_C(context_vec)
-         
+        
+        util_methods.calculate_true_C_sbp(context_vec, C_sbp_model)
+
         # reset the data collector
         visit_num = []
         ep_context_vec = context_vec # record the context vector for the current episode
@@ -359,9 +365,9 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_med_list.append('+'.join(med_lst))
             ep_state_code.append(state_index_to_code[s])
 
-            next_state, rew, cost = util_methods.step(s, a, h, False) # take the action and get the next state, reward and cost
+            next_state, rew, cost, cost_sbp = util_methods.step(s, a, h, False, True) # take the action and get the next state, reward and cost
 
-            ep_sbp_cont.append(-1)
+            ep_sbp_cont.append(cost_sbp)
             ep_hba1c_cont.append(cost) 
             ep_cvdrisk.append(rew)
 
