@@ -117,4 +117,5 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
    * the results are saved to `output_final/Contextual_test_BPClass.csv`
 
 3. Copied the generated simulation output csv files to `NumericalResults/` folder
-4. 
+   
+4. Run `Table_and_Plots_v3_LP_samepatient.ipynb` to get the plots and tables.
