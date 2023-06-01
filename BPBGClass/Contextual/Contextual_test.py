@@ -396,5 +396,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final/Contextual_test_BPBGClass_inference.csv', index=False)
-    print('Results saved to output_final/Contextual_test_BPBGClass_inference.csv')
+    df.to_csv('output_final/Contextual_test_BPBGClass_samepatient.csv', index=False)
+    print('Results saved to output_final/Contextual_test_BPBGClass_samepatient.csv')
