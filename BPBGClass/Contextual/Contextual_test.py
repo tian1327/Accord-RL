@@ -333,8 +333,9 @@ for sim in range(NUMBER_SIMULATIONS):
                 if h >= len(state_index_recorded) or  s != state_index_recorded[h]:
                     # find the 5 nearest neighbors defined by the (context_vec, state) vector
                     # randomly select one action from the 5 actions
-
-                    target_vector = np.concatenate((context_vec, [s]))
+                    s_code = state_index_to_code[s]
+                    s_vec = [int(s_code[i]) for i in range(len(s_code))]
+                    target_vector = np.concatenate((context_vec, s_vec))
                     # print("target_vector =", target_vector)
                     normalized_target_vector = scaler_model.transform([target_vector])
                     # print("normalized_target_vector =", normalized_target_vector)
