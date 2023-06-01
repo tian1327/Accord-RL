@@ -64,6 +64,11 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 R_model = pickle.load(open('output_final/CVDRisk_estimator_BP.pkl', 'rb'))
 C_model = pickle.load(open('output_final/SBP_feedback_estimator.pkl', 'rb'))
 
+# load the same patients as used in BPBGClass
+BPBG_patient_list = pickle.load(open('../../BPBGClass/Contextual/output_final/BPBG_mask_id_list.pkl', 'rb'))
+print("len(BPBG_patient_list) =", len(BPBG_patient_list))
+BPBG_patient_set = set(BPBG_patient_list)
+
 # load the estimated SBP and CVDRisk models from pickle file
 filename = 'output_final/CONTEXTUAL_BP_regr.pkl'
 with open(filename, 'rb') as f:
@@ -118,6 +123,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # if idx >10:
         #     break
+
+        if patient not in BPBG_patient_set:
+            continue
 
         # print("patient =", patient)
         maskid_full.extend([patient] * EPISODE_LENGTH)        
@@ -200,9 +208,6 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb'] = cvdrisk_full
     # print('df.info() =', df.info())
 
-    # df.to_csv('output_final/Contextual_test_BPClass.csv', index=False)
-
-
 #--------------------------------------- Run the simulation for Clinician 
 print("\nRun the simulation for Clinician")
 
@@ -240,6 +245,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # if idx >10:
         #     break
+
+        if patient not in BPBG_patient_set:
+            continue
 
         # print("\n +++++patient =", patient)
         maskid_full.extend([patient] * EPISODE_LENGTH)        
@@ -352,5 +360,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final/Contextual_test_BPClass_inference.csv', index=False)
-    print('Results saved to output_final/Contextual_test_BPClass_inference.csv')
+    df.to_csv('output_final/Contextual_test_BPClass_samepatient.csv', index=False)
+    print('Results saved to output_final/Contextual_test_BPClass_samepatient.csv')

@@ -72,6 +72,11 @@ print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 R_model = pickle.load(open('output_final2/CVDRisk_estimator_BG.pkl', 'rb'))
 C_model = pickle.load(open('output_final2/A1C_feedback_estimator_BG.pkl', 'rb'))
 
+# load the same patients as used in BPBGClass
+BPBG_patient_list = pickle.load(open('../../BPBGClass/Contextual/output_final/BPBG_mask_id_list.pkl', 'rb'))
+print("len(BPBG_patient_list) =", len(BPBG_patient_list))
+BPBG_patient_set = set(BPBG_patient_list)
+
 # load the estimated hba1c and CVDRisk models from pickle file
 filename = 'output_final2/CONTEXTUAL_BG_regr.pkl'
 with open(filename, 'rb') as f:
@@ -128,6 +133,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
         # if ct >2:
         #     break
+
+        if patient not in BPBG_patient_set:
+            continue
 
         ct += 1
 
@@ -259,6 +267,9 @@ for sim in range(NUMBER_SIMULATIONS):
         # if ct >2:
         #     break
 
+        if patient not in BPBG_patient_set:
+            continue
+
         ct += 1
 
         # print("\n +++++patient =", patient)
@@ -376,5 +387,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final2/Contextual_test_BGClass_inference.csv', index=False)
-    print('Results saved to output_final2/Contextual_test_BGClass_inference.csv')
+    df.to_csv('output_final2/Contextual_test_BGClass_samepatient.csv', index=False)
+    print('Results saved to output_final2/Contextual_test_BGClass_samepatient.csv')
