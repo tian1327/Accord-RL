@@ -142,4 +142,6 @@ axs[1].set_ylabel('Constraint Regret')
 # adjust layout and save the figure
 plt.tight_layout()
 plt.savefig("BGClass_regrets2.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("../../NumericalResults/plots/png/BGClass_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("../../NumericalResults/plots/pdf/BGClass_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
 plt.show()

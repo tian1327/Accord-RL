@@ -73,10 +73,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 
-fn_list = ['../Contextual/output/CONTEXTUAL_opsrl150.pkl',
-           'output/DOPE_opsrl150.pkl',
-           'output/OptPessLP_opsrl150.pkl', 
-           'output/OptCMDP_opsrl150.pkl']
+fn_list = ['../Contextual/output_final/CONTEXTUAL_opsrl150.pkl',
+           'output_final/DOPE_opsrl150.pkl',
+           'output_final/OptPessLP_opsrl150.pkl', 
+           'output_final/OptCMDP_opsrl150.pkl']
 
 data_list = []
 label_list = ['COPS-BP', 'DOPE', 'OptPessLP', 'OptCMDP']
@@ -132,6 +132,10 @@ axs[1].set_ylabel('Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
+
+plt.savefig("BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("../../NumericalResults/plots/png/BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("../../NumericalResults/plots/pdf/BPClass_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
+
 plt.show()
-plt.savefig("BPClass_regrets.png", dpi=300, facecolor='w', edgecolor='w') 
 print('Figure saved: BPClass_regrets.png')
