@@ -975,10 +975,10 @@ class utils:
         # combine following 3 print statements to 1 line
         #print('opt_prob.objective:', p.value(opt_prob.objective))
         print(msg, p.LpStatus[status], 
-                "- best value constrained:", round(p.value(opt_prob.objective),4), 
-                ", value from the conLPsolver: value of policy =", round(val_policy,4), 
-                ", cost1 of policy =", round(con1_policy,4),
-                ", cost2 of policy =", round(con2_policy,4))
+                "- best value constrained:", round(p.value(opt_prob.objective),6), 
+                ", value from the conLPsolver: value of policy =", round(val_policy,6), 
+                ", cost1 of policy =", round(con1_policy,6),
+                ", cost2 of policy =", round(con2_policy,6))
 
         # evaluate the optimal policy using finite horizon policy evaluation
         q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2) 
