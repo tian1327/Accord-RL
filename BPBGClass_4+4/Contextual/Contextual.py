@@ -106,7 +106,7 @@ print("N_ACTIONS =", N_ACTIONS)
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
 K0 = -1 # no baseline
-#K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
+# K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
 
 print()
 print("alpha_k =", alpha_k)
@@ -303,8 +303,15 @@ for sim in range(NUMBER_SIMULATIONS):
         
         s = s_idx_init # set the state to the initial state
         for h in range(EPISODE_LENGTH): # for each step in current episode
+            # print('h = {}, s = {}'.format(h, s))
             
-            prob = pi_k[s, h, :]           
+            prob = pi_k[s, h, :]
+            # print('prob = {}'.format(prob))     
+            
+            # remove any negative probability in prob
+            prob = np.maximum(prob, 0)
+            prob = prob / np.sum(prob) # normalize the probability
+
             if random_action:
                 a = int(np.random.choice(ACTIONS, 1, replace = True)) # sample actions uniformly
             else:
@@ -343,7 +350,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # dump results out every x episodes
         if episode != 0 and episode%500== 0:
 
-            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output_final/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -357,17 +364,17 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_hba1c_list = []
             min_eign_cvd_list = []
 
-            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+            filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
                 pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output_final/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
 
-            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+            filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
                 pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
         
@@ -382,6 +389,6 @@ Con1Regret_std = np.std(Con1Regret2, axis = 0)
 Con2Regret_std = np.std(Con2Regret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'output/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'output_final/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, Con1Regret_mean, Con1Regret_std, Con2Regret_mean, Con2Regret_std], f)

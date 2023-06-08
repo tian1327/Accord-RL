@@ -20,7 +20,7 @@ To export current environment: `conda env export > environment.yml`
 
 ---
 
-In this work, we explored 3 cases: BPClass only, BGClass only, and BPClass+BGClass. Navigate to the corresponding folder to run the codes. The following commands should work for all 3 cases.
+In this work, we explored 3 cases: BPClass only, BGClass only, and BPClass+BGClass (Top2 BP+ Top2 BG, Top4 BP+ Top4 BG). Navigate to the corresponding folder to run the codes. The following commands should work for all 3 cases.
 
 We compared the Contextual/COPS algorithm with DOPE, along with other two baselines, OptCMDP and OptPessLP.
 
