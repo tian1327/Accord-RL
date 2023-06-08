@@ -350,7 +350,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # dump results out every x episodes
         if episode != 0 and episode%500== 0:
 
-            filename = 'output_final/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
@@ -364,17 +364,17 @@ for sim in range(NUMBER_SIMULATIONS):
             min_eign_hba1c_list = []
             min_eign_cvd_list = []
 
-            filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
+            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
                 pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-            filename = 'output_final/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+            filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
             pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
 
-            filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
+            filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
                 pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
         
@@ -389,6 +389,6 @@ Con1Regret_std = np.std(Con1Regret2, axis = 0)
 Con2Regret_std = np.std(Con2Regret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'output_final/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = 'output/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, Con1Regret_mean, Con1Regret_std, Con2Regret_mean, Con2Regret_std], f)
