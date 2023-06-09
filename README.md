@@ -82,7 +82,7 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 
 #### OptCMDP
 
-1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run again.
+1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run this again.
 2. Run `python OptCMDP.py 1` to run the OptCMDP algorithm
    * Similar to DOPE, but not running K0 episodes for baseline policy. Instead, it solves Extended LP directly.
    * Choose random policy for the first episode to get started
