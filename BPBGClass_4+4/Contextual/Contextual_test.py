@@ -10,32 +10,48 @@ import pickle
 import sys
 import random
 from tqdm import tqdm
+from itertools import combinations
+from pprint import pprint
+
+def generate_code_dict(features):
+    code_dict = {}
+    
+    # Generate all possible combinations of indices
+    for r in range(1, len(features) + 1):
+        combinations_list = list(combinations(range(len(features)), r))
+        
+        # Generate code and corresponding value for each combination
+        for combination in combinations_list:
+            code = ['0'] * len(features)
+            value = []
+            for index in combination:
+                code[index] = '1'
+                value.append(features[index])
+            
+            code_dict[''.join(code)] = value 
+    
+    # Add '00000000' code with None value
+    code_dict['00000000'] = ["BPBGClass_None"]
+    
+    return code_dict    
+
 
 context_fea = ['baseline_age', 'female', 'race_whiteother',
                'edu_baseline_1', 'edu_baseline_2', 'edu_baseline_3',
                'cvd_hx_baseline', 'baseline_BMI', 'cigarett_baseline_1',
                ]
 
-action_features = ['Diur', 'ACE', 'Bingu', 'Thiaz', ] 
-action_to_med_list = {}
+action_features = ['Diur', 'ACE', 'Beta-blocker', 'CCB',
+                    'Bingu', 'Thiaz', 'Sulfon', 'Meglit']
 
-action_to_med_list['0000'] = ['BPBGClass_None']
-action_to_med_list['1000'] = ['Diur']
-action_to_med_list['0100'] = ['ACE']
-action_to_med_list['0010'] = ['Bingu']
-action_to_med_list['0001'] = ['Thiaz']
-action_to_med_list['1100'] = ['Diur', 'ACE']
-action_to_med_list['1010'] = ['Diur', 'Bingu']
-action_to_med_list['1001'] = ['Diur', 'Thiaz']
-action_to_med_list['0110'] = ['ACE', 'Bingu']
-action_to_med_list['0101'] = ['ACE', 'Thiaz']
-action_to_med_list['0011'] = ['Bingu', 'Thiaz']
-action_to_med_list['1110'] = ['Diur', 'ACE', 'Bingu']
-action_to_med_list['1101'] = ['Diur', 'ACE', 'Thiaz']
-action_to_med_list['1011'] = ['Diur', 'Bingu', 'Thiaz']
-action_to_med_list['0111'] = ['ACE', 'Bingu', 'Thiaz']
-action_to_med_list['1111'] = ['Diur', 'ACE', 'Bingu', 'Thiaz']
+action_to_med_list = generate_code_dict(action_features)
+# pprint(action_to_med_list)
 
+# print(action_to_med_list['00000000'])
+# print(type(action_to_med_list['00000000']))
+# print(action_to_med_list['10000000'])
+# print(type(action_to_med_list['10000000']))
+# stop
 
 #------------------------------------------------------
 # control parameters
