@@ -366,7 +366,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
-                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
+                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
 
         elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
@@ -376,7 +376,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
             with open(filename, 'wb') as f:
-                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr], f)
+                pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
         
         episode += 1
         
