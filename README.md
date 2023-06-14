@@ -114,8 +114,10 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
    * save the trained `knn_model` and `knn_model_label` and `scaler` to selecting the actions of Clinician with unmatching states
 
 2. Run `python Contextual_test.py 1` to run the simulation of COPS and Clinician
+   * The difference between solving constrained LP problem and solving the extended LP problem is that, in the extended LP problem, we need to add equations that relates to the confidence bound of the estimated P_hat. Here when testing, we still call the compute_extended_LP() function, but we do not add the confidence bound equations by settings the Inference to True.
    * the results are saved to `output_final/Contextual_test_BPClass.csv`
 
 3. Copied the generated simulation output csv files to `NumericalResults/` folder
    
 4. Run `Table_and_Plots_v3_LP_samepatient.ipynb` to get the plots and tables.
+   

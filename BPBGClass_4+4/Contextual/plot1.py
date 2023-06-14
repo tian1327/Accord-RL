@@ -41,11 +41,11 @@ for i in range(NUMBER_SIMULATIONS):
     while 1:
         try:
             j += 1
-            [R_est_err, C_est_err, min_eign_sbp_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, ConRegret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
+            [R_est_err, C1_est_err,  C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret, Con1Regret, Con2Regret, pi_k, NUMBER_INFEASIBILITIES, q_k] = pickle.load(f) # load results chunk by chunk
             objs.append(ObjRegret)
-            cons.append(ConRegret)
+            cons.append(Con1Regret)
             R_err.append(R_est_err)
-            C_err.append(C_est_err)
+            C_err.append(C1_est_err)
             eigen_cvd.append(min_eign_cvd_list)
             eigen_sbp.append(min_eign_sbp_list)
 
@@ -121,6 +121,7 @@ axs[1].grid()
 axs[1].legend(loc = 'upper left', prop={'size': 13})
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Objective Regret')
+axs[1].set_ylim([-0.1e3, 1.2e4])
 
 # plot the third subplot
 axs[2].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'Contextual', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
