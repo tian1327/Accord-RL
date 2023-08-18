@@ -1,9 +1,12 @@
 # Accord-RL
 Safe RL for Healthcare
 
+[Slides](https://docs.google.com/presentation/d/1FEpQrTIzbyv5q6Vs8AI1u_axD3H4F-SUG1MbFUCMjrk/edit#slide=id.g24666924b86_1_29)
+
 ### To install environment
 `conda env create -f environment_Linux.yml` or `conda env create -f environment_Mac.yml`
 
+`conda activate tf`  
 
 ### Install Gurobi solver if desired
 
@@ -120,4 +123,17 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 3. Copied the generated simulation output csv files to `NumericalResults/` folder
    
 4. Run `Table_and_Plots_v3_LP_samepatient.ipynb` to get the plots and tables.
-   
+
+---
+2023/08/17 Thursday
+
+1. plot the regrets plots again by changing the blue background to white background
+```bash
+# navigate to each DOPE folder for each case, BPClass, BGClass, BPBGClass
+python plot_all.py 30000
+
+# for BPBGClass (2+2), plot the regrets separately
+python plot_all_separate.py 30000
+
+```
+

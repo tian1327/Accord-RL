@@ -115,8 +115,8 @@ import matplotlib.pyplot as plt
 fig, axs = plt.subplots(1, 1, figsize=(5, 4))
 
 # set facecolor and alpha for all subplots
-axs.patch.set_facecolor("lightsteelblue")
-axs.patch.set_alpha(0.4)
+# axs.patch.set_facecolor("lightsteelblue")
+# axs.patch.set_alpha(0.4)
 
 # plot the first subplot
 for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list):
