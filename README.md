@@ -137,3 +137,9 @@ python plot_all_separate.py 30000
 
 ```
 
+2023/08/23 Wednesday
+
+1. Finished the scripts for running COPS-MM again with use SBP and A1C range, updated the range codes manually. Run the simulation test to get the simulation results.
+   * `python Contextual.py 1`
+   * `python Contextual_test.py 1`
+2. Run 
