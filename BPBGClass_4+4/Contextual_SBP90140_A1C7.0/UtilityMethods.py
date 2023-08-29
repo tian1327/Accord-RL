@@ -879,18 +879,26 @@ class utils:
         q = p.LpVariable.dicts("q", q_keys, lowBound=0, cat='Continuous')
 
         # objective function
-        opt_prob += p.lpSum([q[(h,s,a)]*self.R[s][a] 
+        opt_prob += p.lpSum([q[(h,s,a)]*self.R[s][a]
                             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) 
             
         # constraints
-        # sbp within the range [110, 125] for all time steps
-        # opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
+        # sbp within the range [90, 140] for all time steps
+        # opt_prob += p.lpSum([q[(h,s,a)] * (max(90-self.C[s][a], 0) + max(self.C[s][a]-140, 0)) 
         #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
 
-        opt_prob += p.lpSum([q[(h,s,a)] * ( max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125.0, 0)) 
+
+
+        # opt_prob += p.lpSum([q[(h,s,a)] * ( max(90.0-self.C1[s][a], 0) + max(self.C1[s][a]-140.0, 0)) 
+        #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
+
+        # opt_prob += p.lpSum([q[(h,s,a)] * ( max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.0, 0)) 
+        #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT2 <= 0 
+
+        opt_prob += p.lpSum([q[(h,s,a)] * ( max(90.0-self.C1[s][a], 0) + max(self.C1[s][a]-140.0, 0)) 
                     for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
 
-        opt_prob += p.lpSum([q[(h,s,a)] * ( max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.9, 0)) 
+        opt_prob += p.lpSum([q[(h,s,a)] * (  max(self.C2[s][a]-7.0, 0)) 
                     for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT2 <= 0 
 
 
@@ -966,9 +974,10 @@ class utils:
                     opt_q[h,s,a] = 1.0
                     
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
-                # con_policy  += opt_q[h,s,a]*(max(0, 110-self.C[s][a]) + max(0, self.C[s][a]-125)) # since the cost here is the SBP feedback
-                con1_policy  += opt_q[h,s,a]*( max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) ) # since the cost here is the SBP feedback
-                con2_policy  += opt_q[h,s,a]*( max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.9)) # since the cost here is the hba1c feedback
+                # con_policy  += opt_q[h,s,a]*(max(0, 90-self.C[s][a]) + max(0, self.C[s][a]-140)) # since the cost here is the SBP feedback
+                con1_policy  += opt_q[h,s,a]*( max(0, 90.0-self.C1[s][a]) + max(0, self.C1[s][a]-140.0) ) # since the cost here is the SBP feedback
+                # con2_policy  += opt_q[h,s,a]*( max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.0)) # since the cost here is the hba1c feedback
+                con2_policy  += opt_q[h,s,a]*( max(0, self.C2[s][a]-7.0)) # since the cost here is the hba1c feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
@@ -1021,8 +1030,9 @@ class utils:
                 # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
                 r_k[s][a] = max(0, self.R_hat[s][a] - self.alpha_r * self.cvdrisk_confidence[s][a])
 
-                c1_k[s][a] = max(0, 110-(self.C1_hat[s][a] - self.alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]) - 125)
-                c2_k[s][a] = max(0, 7.0-(self.C2_hat[s][a] - self.alpha_c2 * self.hba1c_confidence[s][a])) + max(0, (self.C2_hat[s][a] + self.alpha_c2 * self.hba1c_confidence[s][a]) - 7.9)
+                c1_k[s][a] = max(0, 90-(self.C1_hat[s][a] - self.alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]) - 140)
+                #c2_k[s][a] = max(0, 7.0-(self.C2_hat[s][a] - self.alpha_c2 * self.hba1c_confidence[s][a])) + max(0, (self.C2_hat[s][a] + self.alpha_c2 * self.hba1c_confidence[s][a]) - 7.0)
+                c2_k[s][a] = max(0, (self.C2_hat[s][a] + self.alpha_c2 * self.hba1c_confidence[s][a]) - 7.0)
 
         # objective function
         # equation (18a) in the paper
@@ -1400,9 +1410,11 @@ class utils:
             x2 = 0
             for a in self.ACTIONS[s]:
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
-                # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C[s][a]) + max(0, C[s][a]-125)) 
-                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp
-                x2 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # hba1c
+                # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 90-C[s][a]) + max(0, C[s][a]-140)) 
+                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 90.0-C1[s][a]) + max(0, C1[s][a]-140.0) ) # sbp
+                #x2 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.0)) # hba1c
+                x2 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, C2[s][a]-7.0)) # hba1c
+
 
             c1[s, self.EPISODE_LENGTH-1] = x1 #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
             c2[s, self.EPISODE_LENGTH-1] = x2 
@@ -1420,9 +1432,11 @@ class utils:
                 for a in self.ACTIONS[s]:
                     x += policy[s,h,a]*R[s][a]
                     # y += policy[s,h,a]*C[s][a]
-                    # y += policy[s,h,a]*(max(0, 110-C[s][a]) + max(0, C[s][a]-125))
-                    y1 += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp deviation
-                    y2 += policy[s,h,a]*(max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9))
+                    # y += policy[s,h,a]*(max(0, 90-C[s][a]) + max(0, C[s][a]-140))
+                    y1 += policy[s,h,a]*(max(0, 90.0-C1[s][a]) + max(0, C1[s][a]-140.0) ) # sbp deviation
+                    #y2 += policy[s,h,a]*(max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.0))
+                    y2 += policy[s,h,a]*( max(0, C2[s][a]-7.0))
+
 
                 R_policy[s,h] = x # expected reward of the state s at time h under the policy
                 C1_policy[s,h] = y1 # expected cost of the state s at time h under the policy

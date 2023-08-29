@@ -68,7 +68,7 @@ if len(sys.argv) > 1:
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
-with open('output_final/model_contextual_BPBG.pkl', 'rb') as f:
+with open('output/model_contextual_BPBG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT1_list, C1_b_list, CONSTRAINT2_list, C2_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
@@ -77,18 +77,18 @@ STATE_CODE_LENGTH = len(state_index_to_code[0])
 print("STATE_CODE_LENGTH =", STATE_CODE_LENGTH)
 
 # load the trained CVDRisk_estimator and SBP_feedback_estimator from pickle file
-R_model = pickle.load(open('output_final/CVDRisk_estimator_BPBG.pkl', 'rb'))
-C1_model = pickle.load(open('output_final/SBP_feedback_estimator_BPBG.pkl', 'rb'))
-C2_model = pickle.load(open('output_final/A1C_feedback_estimator_BPBG.pkl', 'rb'))
+R_model = pickle.load(open('output/CVDRisk_estimator_BPBG.pkl', 'rb'))
+C1_model = pickle.load(open('output/SBP_feedback_estimator_BPBG.pkl', 'rb'))
+C2_model = pickle.load(open('output/A1C_feedback_estimator_BPBG.pkl', 'rb'))
 
 # load the same patients 
 same_patient_set = pickle.load(open('../../NumericalResults/samepatient_maskid.pkl', 'rb'))
 print("len(same_patient_set) =", len(same_patient_set)) 
 
 # load the estimated hba1c and CVDRisk models from pickle file
-filename = 'output_final/CONTEXTUAL_BPBG_regr.pkl'
+filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
 with open(filename, 'rb') as f:
-    [sbp_regr, hba1c_regr, cvdrisk_regr] = pickle.load(f)
+    [sbp_regr, hba1c_regr, cvdrisk_regr, P_hat] = pickle.load(f)
 
 
 CONSTRAINT1 = CONSTRAINT1_list[-1]
@@ -172,7 +172,9 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.calculate_est_R_C()
         # Notice here, we should have used the empirical estimates of P after learning for 3e4 episodes, but we use the true P here for simplicity
         # the true P and estimated P after 3e4 episodes are very close, so it should not make a big difference
-        util_methods.set_P_hat(P) 
+        #util_methods.set_P_hat(P)
+        util_methods.set_P_hat(P_hat) 
+
         
         # compute the optimal policy using the learned R_hat and C_hat, and P_hat, all confidence intervals are 0 
         pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP(True) 
@@ -225,7 +227,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             s = next_state
 
-        # after EPISODE_LENGTH, write the collected data per episodes to file output_final/Contextual_test_BPClass.csv
+        # after EPISODE_LENGTH, write the collected data per episodes to file output/Contextual_test_BPClass.csv
         visit_num_full.extend(visit_num)
         state_code_full.extend(ep_state_code)
         action_code_full.extend(ep_action_code)
@@ -235,7 +237,7 @@ for sim in range(NUMBER_SIMULATIONS):
         cvdrisk_full.extend(ep_cvdrisk)
 
 
-    # after looping through all patients, write the collected data to file output_final/Contextual_test_BPClass.csv
+    # after looping through all patients, write the collected data to file output/Contextual_test_BPClass.csv
     df = pd.DataFrame({'MaskId': maskid_full, 'Visit_num': visit_num_full})
     for fea in context_fea:
         df[fea] = context_vec_dict_full[fea]
@@ -247,7 +249,7 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb'] = cvdrisk_full
     # print('df.info() =', df.info())
 
-    # df.to_csv('output_final/Contextual_test_BPClass.csv', index=False)
+    # df.to_csv('output/Contextual_test_BPClass.csv', index=False)
 
     print('+++++Infeasible count =', infeasible_ct)
 
@@ -255,10 +257,10 @@ for sim in range(NUMBER_SIMULATIONS):
 #--------------------------------------- Run the simulation for Clinician 
 print("\nRun the simulation for Clinician")
 
-# load knn model and scalar model from output_final/knn_model.pkl and output_final/scaler_model.pkl
-knn_model = pickle.load(open('output_final/knn_model.pkl', 'rb'))
-labels = pickle.load(open('output_final/knn_model_label.pkl', 'rb'))
-scaler_model = pickle.load(open('output_final/scaler_model.pkl', 'rb'))
+# load knn model and scalar model from output/knn_model.pkl and output/scaler_model.pkl
+knn_model = pickle.load(open('output/knn_model.pkl', 'rb'))
+labels = pickle.load(open('output/knn_model_label.pkl', 'rb'))
+scaler_model = pickle.load(open('output/scaler_model.pkl', 'rb'))
 
 for sim in range(NUMBER_SIMULATIONS):
 
@@ -393,7 +395,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
             s = next_state
 
-        # after EPISODE_LENGTH, write the collected data per episodes to file output_final/Contextual_test_BPClass.csv
+        # after EPISODE_LENGTH, write the collected data per episodes to file output/Contextual_test_BPClass.csv
         visit_num_full.extend(visit_num)
         state_code_full.extend(ep_state_code)
         action_code_full.extend(ep_action_code)
@@ -403,7 +405,7 @@ for sim in range(NUMBER_SIMULATIONS):
         cvdrisk_full.extend(ep_cvdrisk)
 
 
-    # after looping through all patients, write the collected data to file output_final/Contextual_test_BPClass.csv
+    # after looping through all patients, write the collected data to file output/Contextual_test_BPClass.csv
     df['state_code_cln'] = state_code_full
     df['action_code_cln'] = action_code_full
     df['med_list_cln'] = med_list_full
@@ -412,5 +414,5 @@ for sim in range(NUMBER_SIMULATIONS):
     df['cvdrisk_fb_cln'] = cvdrisk_full
 
 
-    df.to_csv('output_final/Contextual_test_BPBGClass_samepatient.csv', index=False)
-    print('Results saved to output_final/Contextual_test_BPBGClass_samepatient.csv')
+    df.to_csv('output/Contextual_test_BPBGClass_samepatient.csv', index=False)
+    print('Results saved to output/Contextual_test_BPBGClass_samepatient.csv')
