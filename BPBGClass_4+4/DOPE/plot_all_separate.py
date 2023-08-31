@@ -129,11 +129,11 @@ for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     
 
-axs.grid()
+axs.grid(alpha=0.2)
 axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs.legend(loc = 'upper left', prop={'size': 13})
 axs.set_xlabel('Episode')
-axs.set_ylabel('Objective Regret')
+axs.set_ylabel('Cumulative Objective Regret')
 #axs.set_ylim([-0.1e3, 5e3])
 
 plt.savefig("BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
@@ -162,11 +162,11 @@ for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list)
     axs.plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     
 
-axs.grid()
+axs.grid(alpha=0.2)
 axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs.legend(loc = 'center right', prop={'size': 13})
 axs.set_xlabel('Episode')
-axs.set_ylabel('Constraint Regret')
+axs.set_ylabel('Cumulative Constraint Regret')
 
 plt.savefig("BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 plt.savefig("../../NumericalResults/plots/png/BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')

@@ -130,21 +130,21 @@ for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list)
     axs[1].plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     
 
-axs[0].grid()
+axs[0].grid(alpha=0.2)
 axs[0].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[0].legend(loc = 'upper left', prop={'size': 13})
 axs[0].set_xlabel('Episode')
-axs[0].set_ylabel('Objective Regret')
+axs[0].set_ylabel('Cumulative Objective Regret')
 #axs[0].set_ylim([-0.1e3, 5e3])
 
 # plot the second subplot
 # axs[1].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = label, alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
-axs[1].grid()
+axs[1].grid(alpha=0.2)
 axs[1].ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs[1].legend(loc = 'center right',prop={'size': 13})
 #axs[1].set_ylim([-0.1e3, 1e4])
 axs[1].set_xlabel('Episode')
-axs[1].set_ylabel('Constraint Regret')
+axs[1].set_ylabel('Cumulative Constraint Regret')
 
 # adjust layout and save the figure
 plt.tight_layout()
