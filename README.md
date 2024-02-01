@@ -4,7 +4,7 @@ Safe RL for Healthcare
 [Slides](https://docs.google.com/presentation/d/1FEpQrTIzbyv5q6Vs8AI1u_axD3H4F-SUG1MbFUCMjrk/edit#slide=id.g24666924b86_1_29)
 
 ### To install environment
-`conda env create -f environment_Linux.yml` or `conda env create -f environment_Mac.yml`
+`conda env create -f environment_linux.yml` or `conda env create -f environment_Mac.yml`
 
 `conda activate tf`  
 

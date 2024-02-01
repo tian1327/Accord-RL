@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "Contextual.py", line 2, in <module>
+    import numpy as np
+ImportError: No module named numpy
+Job ID: 9631658
+Job submission directory: /scratch/user/ltmask/Accord-RL/BPBGClass_4+4/Contextual_SBP90130_A1C7.9_shuffle
+Temp directory: /tmp/job.9631658
+Scratch directory: /scratch/user/ltmask
