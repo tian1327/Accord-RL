@@ -5,7 +5,7 @@
 
 ##NECESSARY JOB SPECIFICATIONS
 #SBATCH --job-name=shuffle
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=8
 #SBATCH --ntasks-per-node=8
 #SBATCH --nodes=1

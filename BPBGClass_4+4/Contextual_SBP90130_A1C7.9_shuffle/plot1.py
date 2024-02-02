@@ -16,7 +16,7 @@ if len(sys.argv) > 1:
     NUMBER_EPISODES_o = int(sys.argv[2]) 
 
 L = 1 # marker point interval
-mark_every_interval = 2000 # marker point interval
+mark_every_interval = 200 # marker point interval
 
 # ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
@@ -142,5 +142,6 @@ axs[3].set_ylabel('L2-Norm Error')
 
 # adjust layout and save the figure
 plt.tight_layout()
-plt.savefig("output/all_plots.pdf")
+# plt.savefig("output/all_plots.pdf")
+plt.savefig("output/all_plots.png")
 plt.show()

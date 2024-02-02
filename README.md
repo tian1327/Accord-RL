@@ -143,3 +143,19 @@ python plot_all_separate.py 30000
    * `python Contextual.py 1`
    * `python Contextual_test.py 1`
 2. Copy the simulation results to the `NumericalResults/` folder and run the analysis notebook
+
+
+2024/01/31 Wednesday
+1. Created the `Contextual_SBP90130_A1C7.9_shuffle` folder to run the COPS-MM with shuffled patients
+2. The time cost is a big issue here, I did not implement the code to record a patient's history record but just randomly sample. I think this would be the same as randomly sample a patient from the dataset. And even if so, we only have like 3000 patients rather than the 3e4 episodes we used to have in the sequential case.
+```bash
+# use the old non-shuffled base models and pkl files
+# run COP-MM with shuffled patients, DO NOT use GUROBI solver as it is making trouble, unsolved base policy, will keep skipping to next patients
+
+# here I set the k0=200, which I could have used K0=-1
+python Contextual.py 
+
+# plot the regrets
+python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
+
+```
