@@ -263,7 +263,9 @@ class utils:
         assert len(ep_state_code) == len(ep_action_code)
 
         ep_length = len(ep_state_code)
-        x_matrix = np.tile(ep_context_vec, (ep_length, 1)) # stack contect_vector vertically for numebr of steps in the episode
+        # x_matrix = np.tile(ep_context_vec, (ep_length, 1)) # stack context_vector vertically for numebr of steps in the episode
+
+        x_matrix = np.array(ep_context_vec)
 
         # build the state matrix from the list of state code, if the state code is 1010, then the action matrix has a row of [1, 0, 1, 0]
         state_vector_list = []
@@ -287,7 +289,7 @@ class utils:
         hba1c_fb_cont = np.array(ep_hba1c_cont).reshape(-1, 1) # make a column vector
         cvd = np.array(ep_cvdrisk).reshape(-1, 1) # make a column vector
 
-        if self.episode == 1: # only 1 episode so far
+        if self.episode == 0: # first episode
             
             self.X = x_matrix
             self.S = state_matrix
@@ -479,7 +481,7 @@ class utils:
 
                 y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
                 #print('y_pred: ', y_pred)
-
+                y_pred = np.clip(y_pred, -709, 709) # avoid overflow
                 reward = 1/(1+np.exp(-y_pred))
                 #print('reward: ', reward)
 
@@ -722,6 +724,7 @@ class utils:
                 # print('xsa_vec: ', xsa_vec)
                 y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0]
                 # print('y_pred: ', y_pred)
+                y_pred = np.clip(y_pred, -709, 709) # avoid overflow
                 factor = 1.0/(1.0+np.exp(-y_pred))
                 # factor = max(0.2, factor)
                 # print('factor: ', factor)
@@ -947,8 +950,10 @@ class utils:
                             opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
 
                         elif opt_policy[s,h,a] > 1.0:
-                            print("invalid value printing")
-                            print("opt_policy[s,h,a]", opt_policy[s,h,a])
+                            pass
+                            # print("invalid value printing")
+                            # print("opt_policy[s,h,a]", opt_policy[s,h,a])
+
                             # opt_policy[s,h,a] = 1.0
                             # # set other actions to 0
                             # for a_1 in self.ACTIONS[s]:

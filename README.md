@@ -159,3 +159,10 @@ python Contextual.py
 python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 
 ```
+
+2024/02/06 Tuesday
+1. Created the `Contextual_batch.py` for running the batch update of COPS-MM, keep tracking the 
+
+```bash
+python Contextual_batch.py
+```
