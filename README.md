@@ -161,8 +161,7 @@ python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 ```
 
 2024/02/06 Tuesday
-1. Created the `Contextual_batch.py` for running the batch update of COPS-MM, keep tracking the 
-
+1. Created the `Contextual_batch.py` for running the batch update of COPS-MM. For efficiency consideration (speed, RAM), I implemented the patients pool to define how many patients can interact. The batch update is conducted within the patients pool util the patients pool depletes. Then we re-sample the patients pool and continue the batch update. 
 ```bash
 python Contextual_batch.py
 ```
