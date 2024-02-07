@@ -60,7 +60,7 @@ NUMBER_SIMULATIONS = 1
 
 if len(sys.argv) > 1:
     use_gurobi = sys.argv[1]
-
+print('use_gurobi =', use_gurobi)
 print('sample_data =', sample_data)
 print('random_action =', random_action)
 
