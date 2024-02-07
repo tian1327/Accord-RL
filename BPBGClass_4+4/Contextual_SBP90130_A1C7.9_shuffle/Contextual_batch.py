@@ -278,7 +278,7 @@ for sim in range(NUMBER_SIMULATIONS):
 
                 elif tracking_dict[patient]['visit_ct'] == 20: # patient has been visited 20 times, remove from the tracking_dict                    
                     del tracking_dict[patient]
-                    # print('patient =', patient, 'has been visited 20 times, remove from the tracking_dict', 'len(tracking_dict) =', len(tracking_dict))
+                    print('patient =', patient, 'has been visited 20 times, remove from the tracking_dict', 'len(tracking_dict) =', len(tracking_dict))
                     if len(tracking_dict) == 0: # no more patient in the tracking_dict
                         empty_tracking_dict = True
                         break
