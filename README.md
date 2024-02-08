@@ -164,8 +164,18 @@ python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 1. Created the `Contextual_batch.py` for running the batch update of COPS-MM. For efficiency consideration (speed, RAM), I implemented the patients pool to define how many patients can interact. The batch update is conducted within the patients pool util the patients pool depletes. Then we re-sample the patients pool and continue the batch update. 
 ```bash
 # in HPRC server
+cd BPBGClass_4+4/Contextual_SBP90130_A1C7.9_shuffle/
 python Contextual_batch.py
+python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 
-# in LENSS server, use gurobi solver
+# running 4+4 in LENSS server, use gurobi solver
+cd BPBGClass_4+4/Contextual_SBP90130_A1C7.9_shuffle_grobi/
 python Contextual_batch.py 1
+python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
+```
+2. Note that, very importantly, the regre plot we show in the paper is from BPBG Contextual 2+2 case, since it has better plots than 4+4 case. The regret plots for 4+4 is ugly and prof have decided to just use the one from the 2+2 case.
+
+```bash
+cd /scratch/user/ltmask/Accord-RL/BPBGClass/Contextual_shuffle
+python Contextual_batch.py
 ```
