@@ -258,7 +258,12 @@ for sim in range(NUMBER_SIMULATIONS):
 
                     if status != 'Optimal':
                         print("Baseline policy is {}, skip to the next patient".format(status))
-                        continue
+                        del tracking_dict[patient]                        
+                        if len(tracking_dict) == 0: # no more patient in the tracking_dict
+                            empty_tracking_dict = True
+                            break
+                        else:
+                            continue # skip to the next patient
                     
                     # +++++ select policy using the extended LP, by solving the DOPE problem, equation (10)
                     pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP()
