@@ -1,6 +1,7 @@
 */.DS_Store
 */.vscode
 output/
+output_bs20/
 output_final/
 output_final_initstate_dependentC/
 plots/

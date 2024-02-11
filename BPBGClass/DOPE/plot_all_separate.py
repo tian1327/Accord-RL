@@ -82,6 +82,7 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
+           '../Contextual_batch/output_bs20/CONTEXTUAL_opsrl100.pkl',
            '../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
            #'output/DOPE_opsrl100.pkl', # this RUN# 100 has 39 Cons1Regret, thus not used
            #'output/DOPE_opsrl200.pkl',
@@ -90,9 +91,10 @@ fn_list = [
            'output_final/OptCMDP_opsrl100.pkl']
 
 data_list = []
-label_list = ['COPS-MM', 'DOPE', 'OptPessLP', 'OptCMDP']
-color_list = ['red', 'blue', 'green', 'SaddleBrown']
-marker_list = ['D', 'o', 's', 'v']
+label_list = ['COPS-MM (batch)', 'COPS-MM', 'DOPE', 'OptPessLP', 'OptCMDP']
+color_list = ['black', 'red', 'blue', 'green', 'SaddleBrown']
+linestyle_list = ['solid', 'solid', 'solid', 'solid', 'solid']
+marker_list = ['x', 'D', 'o', 's', 'v']
 for fn in fn_list:
     data, _ = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
 
@@ -119,11 +121,11 @@ fig, axs = plt.subplots(1, 1, figsize=(5, 4))
 # axs.patch.set_alpha(0.4)
 
 # plot the first subplot
-for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list):
+for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, marker_list, linestyle_list):
     obj_opsrl_mean = data['obj_opsrl_mean']
     con1_opsrl_mean = data['con1_opsrl_mean']
     con2_opsrl_mean = data['con2_opsrl_mean']
-    axs.plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs.plot(x_o, obj_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval, linestyle=linestyle)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"_SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'_HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
@@ -137,8 +139,8 @@ axs.set_ylabel('Cumulative Objective Regret')
 #axs.set_ylim([-0.1e3, 5e3])
 
 plt.savefig("BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
-plt.savefig("../../NumericalResults/plots/png/BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
-plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_obj_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
+# plt.savefig("../../NumericalResults/plots/png/BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+# plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_obj_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
 
 # stop 
 
@@ -152,14 +154,14 @@ fig, axs = plt.subplots(1, 1, figsize=(5, 4))
 # axs.patch.set_alpha(0.4)
 
 # plot the first subplot
-for data, label, clr, mkr in zip(data_list, label_list, color_list, marker_list):
+for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, marker_list, linestyle_list):
     obj_opsrl_mean = data['obj_opsrl_mean']
     con1_opsrl_mean = data['con1_opsrl_mean']
     con2_opsrl_mean = data['con2_opsrl_mean']
     # axs.plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"_SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'_HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
-    axs.plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
+    axs.plot(x_o, con1_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval, linestyle=linestyle)
     
 
 axs.grid(alpha=0.2)
@@ -169,7 +171,7 @@ axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Constraint Regret')
 
 plt.savefig("BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
-plt.savefig("../../NumericalResults/plots/png/BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
-plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_cons_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
+# plt.savefig("../../NumericalResults/plots/png/BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+# plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_cons_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
 
-plt.show()
+# plt.show()
