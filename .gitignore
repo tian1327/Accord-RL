@@ -2,6 +2,7 @@
 */.vscode
 output/
 output_bs20/
+output_grobi_nooptimal14000/
 output_final/
 output_final_initstate_dependentC/
 plots/
