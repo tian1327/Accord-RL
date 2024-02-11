@@ -118,6 +118,7 @@ print("number of episodes =", NUMBER_EPISODES)
 assert K0 < NUMBER_EPISODES, "K0 is greater than the number of episodes"
 
 NUMBER_EPISODES = int(NUMBER_EPISODES)
+# NUMBER_EPISODES = 100
 NUMBER_SIMULATIONS = int(NUMBER_SIMULATIONS)
 ACTIONS = np.arange(N_ACTIONS)
 
@@ -189,7 +190,7 @@ for sim in range(NUMBER_SIMULATIONS):
         # for k, v in tracking_dict.items():
         #     print(k, v)
 
-        while not empty_tracking_dict:
+        while not empty_tracking_dict and episode < NUMBER_EPISODES:
 
             ## initialize the logger for the current batch
             ep_count = np.zeros((N_STATES, N_ACTIONS))
