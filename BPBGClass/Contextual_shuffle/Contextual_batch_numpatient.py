@@ -316,14 +316,14 @@ for sim in range(NUMBER_SIMULATIONS):
                     start_time = time.time()
 
                 # dump the results
-                if (episode != 0 and episode%10==0) or episode==NUMBER_EPISODES-1:
+                if (episode != 0 and episode%100==0) or episode==NUMBER_EPISODES-1:
                     filename = output_dir + '/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
                     f = open(filename, 'ab')
                     pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
                     f.close()
                     print(f'episode={episode}, dumped results to {filename}')
-                    print('len(objs) =', len(objs))
-                    print('len(R_est_err) =', len(R_est_err))
+                    # print('len(objs) =', len(objs))
+                    # print('len(R_est_err) =', len(R_est_err))
                     objs = []
                     cons1 = []
                     cons2 = []
