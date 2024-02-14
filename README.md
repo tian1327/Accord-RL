@@ -179,3 +179,31 @@ python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 cd /scratch/user/ltmask/Accord-RL/BPBGClass/Contextual_shuffle
 python Contextual_batch.py
 ```
+
+2024/02/13 Tuesday
+1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case
+```bash
+cd BPBGClass/Contextual_shuffle/
+python Contextual_batch.py 20
+python Contextual_batch.py 40
+python Contextual_batch.py 100
+
+# plot the comparison of batchsize
+python plot_all_separate.py 3000
+```
+
+2024/02/14 Wednesday
+1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case, define batchsize as # of finished patients
+```bash
+cd BPBGClass/Contextual_shuffle/
+python Contextual_batch_numpatient.py 10
+python Contextual_batch_numpatient.py 20
+python Contextual_batch_numpatient.py 40
+python Contextual_batch_numpatient.py 100
+
+# plot the test results
+python plot1.py output_bs10/CONTEXTUAL_opsrl100.pkl 40
+
+# plot the comparison of batchsize
+python plot_all_separate.py 3000
+```

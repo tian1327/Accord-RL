@@ -15,16 +15,21 @@ if len(sys.argv) > 1:
     fn = sys.argv[1]
     NUMBER_EPISODES_o = int(sys.argv[2]) 
 
+batchsize = int(fn.split('/')[0].split('_')[1][-2:])
+print('batchsize:', batchsize)
+batch_num = int(NUMBER_EPISODES_o / batchsize)
+print('batch_num:', batch_num)
+
 L = 1 # marker point interval
 mark_every_interval = 1000 # marker point interval
 
 # ----------------- Read data from file ----------------- #
 obj_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
 con_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
-R_err_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
-C_err_opsrl = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
-min_eign_cvd = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
-min_eign_sbp = np.zeros((NUMBER_SIMULATIONS, NUMBER_EPISODES_o))
+R_err_opsrl = np.zeros((NUMBER_SIMULATIONS, batch_num))
+C_err_opsrl = np.zeros((NUMBER_SIMULATIONS, batch_num))
+min_eign_cvd = np.zeros((NUMBER_SIMULATIONS, batch_num))
+min_eign_sbp = np.zeros((NUMBER_SIMULATIONS, batch_num))
 
 
 for i in range(NUMBER_SIMULATIONS):
@@ -59,14 +64,21 @@ for i in range(NUMBER_SIMULATIONS):
     flat_C_err = [item for sublist in C_err for item in sublist]
     flat_eigen_cvd = [item for sublist in eigen_cvd for item in sublist]
     flat_eigen_sbp = [item for sublist in eigen_sbp for item in sublist]
+
+    print('len(flat_listobj):', len(flat_listobj))
+    print('len(flat_listcon):', len(flat_listcon))
+    print('len(flat_R_err):', len(flat_R_err))
+    print('len(flat_C_err):', len(flat_C_err))
+    print('len(flat_eigen_cvd):', len(flat_eigen_cvd))
+    print('len(flat_eigen_sbp):', len(flat_eigen_sbp))
     
     #print(len(flat_listobj))
     obj_opsrl[i, :] = np.copy(flat_listobj[0:NUMBER_EPISODES_o])
     con_opsrl[i, :] = np.copy(flat_listcon[0:NUMBER_EPISODES_o])
-    R_err_opsrl[i, :] = np.copy(flat_R_err[0:NUMBER_EPISODES_o])
-    C_err_opsrl[i, :] = np.copy(flat_C_err[0:NUMBER_EPISODES_o])
-    min_eign_cvd[i, :] = np.copy(flat_eigen_cvd[0:NUMBER_EPISODES_o])
-    min_eign_sbp[i, :] = np.copy(flat_eigen_sbp[0:NUMBER_EPISODES_o])
+    R_err_opsrl[i, :] = np.copy(flat_R_err[0:batch_num])
+    C_err_opsrl[i, :] = np.copy(flat_C_err[0:batch_num])
+    min_eign_cvd[i, :] = np.copy(flat_eigen_cvd[0:batch_num])
+    min_eign_sbp[i, :] = np.copy(flat_eigen_sbp[0:batch_num])
 
 obj_opsrl_mean = np.mean(obj_opsrl, axis = 0)
 obj_opsrl_std = np.std(obj_opsrl, axis = 0)
@@ -87,6 +99,7 @@ min_eign_sbp_mean = np.mean(min_eign_sbp, axis = 0)
 min_eign_sbp_std = np.std(min_eign_sbp, axis = 0)
 
 x_o =  np.arange(0, NUMBER_EPISODES_o, L)
+x_b =  np.arange(0, batch_num, L)
 
 # ----------------- Plot the results ----------------- #
 
@@ -108,11 +121,11 @@ for ax in axs:
     ax.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 
 # plot the first subplot
-axs[0].plot(x_o, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
-axs[0].plot(x_o, min_eign_sbp_mean[::L], color='blue',label = 'hba1c min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[0].plot(x_b, min_eign_cvd_mean[::L], color='red',label = 'CVD min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[0].plot(x_b, min_eign_sbp_mean[::L], color='blue',label = 'hba1c min eigen', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
 axs[0].grid()
 axs[0].legend(loc = 'upper left',prop={'size': 13})
-axs[0].set_xlabel('Episode')
+axs[0].set_xlabel('Batch Number')
 axs[0].set_ylabel('min eigenvalue')
 
 # plot the second subplot
@@ -121,7 +134,7 @@ axs[1].grid()
 axs[1].legend(loc = 'upper left', prop={'size': 13})
 axs[1].set_xlabel('Episode')
 axs[1].set_ylabel('Objective Regret')
-axs[1].set_ylim([-0.1e3, 1.2e4])
+# axs[1].set_ylim([-0.1e3, 1.2e4])
 
 # plot the third subplot
 axs[2].plot(x_o, con_opsrl_mean[::L], color='saddlebrown',label = 'Contextual', alpha=0.6,linewidth=2.5, marker="D",markersize='8', markeredgewidth='3',markevery=mark_every_interval)
@@ -132,8 +145,8 @@ axs[2].set_xlabel('Episode')
 axs[2].set_ylabel('Constraint Regret')
 
 # plot the fourth subplot
-axs[3].plot(x_o, R_err_opsrl_mean[::L], color='red',label = 'CVD Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
-axs[3].plot(x_o, C_err_opsrl_mean[::L], color='blue',label = 'hba1c Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[3].plot(x_b, R_err_opsrl_mean[::L], color='red',label = 'CVD Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
+axs[3].plot(x_b, C_err_opsrl_mean[::L], color='blue',label = 'hba1c Model', alpha=0.6,linewidth=2.5, marker="D",markersize='3', markeredgewidth='3',markevery=mark_every_interval)
 axs[3].grid()
 axs[3].legend(loc = 'upper right',prop={'size': 13})
 axs[3].set_ylim([0, 60])
