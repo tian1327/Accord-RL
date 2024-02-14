@@ -222,6 +222,13 @@ class utils:
                 self.C2[s][a] = self.C2_model.predict(C_input.reshape(1, -1))
 
                 # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
+        return self.R, self.R_y_pred, self.C1, self.C2
+
+    def set_true_R_C(self, R, R_y_pred, C1, C2):
+        self.R = R
+        self.R_y_pred = R_y_pred
+        self.C1 = C1
+        self.C2 = C2
 
     def calculate_est_R_C(self,):
 
@@ -289,8 +296,8 @@ class utils:
         hba1c_fb_cont = np.array(ep_hba1c_cont).reshape(-1, 1) # make a column vector
         cvd = np.array(ep_cvdrisk).reshape(-1, 1) # make a column vector
 
-        if self.episode == 0: # first episode
-            
+        # if self.episode == 0: # first episode
+        if self.X is None: # first episode            
             self.X = x_matrix
             self.S = state_matrix
             self.A = action_matrix
@@ -361,7 +368,8 @@ class utils:
     def run_regression_rewards_costs_BPBG(self, episode):
 
         # do nothing if no history yet
-        if episode == 0:
+        # if episode == 0:
+        if self.X is None:
             return (0, 0, 0)
         
         #---------run logistic/linear regression to estimate the CVDRisk feedback, get \theta r
@@ -595,7 +603,8 @@ class utils:
     # compute the confidence intervals beta for the transition probabilities
     def compute_confidence_intervals_BPBG(self, L): 
 
-        if self.episode == 0:
+        # if self.episode == 0:
+        if self.X is None:
             return -1, -1, -1
 
         # ----------------- get U_cvd_inverse -----------------

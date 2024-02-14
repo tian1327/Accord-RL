@@ -11,6 +11,39 @@ import sys
 import random
 from tqdm import tqdm
 
+
+def save_cumulative_regret(episode, obj_regret, con1_regret, con2_regret, CONSTRAINT1, CONSTRAINT2, select_baseline_policy_ct):
+
+    ## calculate the cumulative regrets
+    if episode == 0:
+        ObjRegret2[sim, episode] = obj_regret
+        Con1Regret2[sim, episode] = con1_regret
+        Con2Regret2[sim, episode] = con2_regret
+
+        if con1_regret > CONSTRAINT1 or con2_regret > CONSTRAINT2:
+            NUMBER_INFEASIBILITIES[sim, episode] = 1
+    else:
+        ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + obj_regret # cumulative sum of objective regret
+        Con1Regret2[sim, episode] = Con1Regret2[sim, episode - 1] + con1_regret
+        Con2Regret2[sim, episode] = Con2Regret2[sim, episode - 1] + con2_regret
+
+        if con1_regret > CONSTRAINT1 or con2_regret > CONSTRAINT2:
+            NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
+        else:
+            NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
+
+    objs.append(ObjRegret2[sim, episode])
+    cons1.append(Con1Regret2[sim, episode])
+    cons2.append(Con2Regret2[sim, episode])
+
+    end_time = time.time()
+    dtime = end_time - start_time
+    print('Eps {}, s_idx_init= {}, ObjRegt = {:.2f}, Cons1Regt = {:.2f}, Cons2Regt = {:.2f}, Infeas = {}, Infeas in EXLP = {}, Time = {:.2f}, tracking_dict_len = {}\n'.format(
+        episode, s_idx_init, ObjRegret2[sim, episode], Con1Regret2[sim, episode], Con2Regret2[sim, episode], 
+        NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime, len(tracking_dict)))
+
+
+
 context_fea = ['baseline_age', 'female', 'race_whiteother',
                'edu_baseline_1', 'edu_baseline_2', 'edu_baseline_3',
                'cvd_hx_baseline', 'baseline_BMI', 'cigarett_baseline_1',
@@ -64,6 +97,11 @@ print('use_gurobi =', use_gurobi)
 print('sample_data =', sample_data)
 print('random_action =', random_action)
 
+batch_size = 20 # batch size for updating the empirical model
+patient_interval = 10 # the interval for each patient to be visited
+pool_size = patient_interval
+# pool_size = 20 # pool size for the patients pool for overlapping analysis
+
 #--------------------------------------------------------------------------------------
 random.seed(int(RUN_NUMBER))
 np.random.seed(int(RUN_NUMBER))
@@ -108,8 +146,6 @@ K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2
 K0 = -1 # no baseline
 # K0 = 200
 # K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
-batch_size = 20 # batch size for updating the empirical model
-pool_size = 20 # pool size for the patients pool for overlapping analysis
 
 print()
 print("alpha_k =", alpha_k)
@@ -167,9 +203,9 @@ for sim in range(NUMBER_SIMULATIONS):
     max_cost1 = 0
     max_cost2 = 0
     select_baseline_policy_ct = 0
-    episode = 0
+    episode = 0 
     tracking_dict = {}
-    while episode < NUMBER_EPISODES: # loop over episodes
+    while episode < NUMBER_EPISODES: # here the episode is the number of patients have finished all their 20 visits
 
         ## create the patients pool
         tracking_dict = {}
@@ -185,11 +221,12 @@ for sim in range(NUMBER_SIMULATIONS):
             tracking_dict[patient]['visit_ct'] = 0
             tracking_dict[patient]['s_idx_init'] = s_idx_init
         
-        print('created the patients pool =', tracking_dict.keys())
+        patient_queue = list(tracking_dict.keys())
+        print('created the patients queue =', patient_queue)
         empty_tracking_dict = False
         # for k, v in tracking_dict.items():
         #     print(k, v)
-
+        patient_idx = 0
         while not empty_tracking_dict and episode < NUMBER_EPISODES:
 
             ## initialize the logger for the current batch
@@ -209,23 +246,16 @@ for sim in range(NUMBER_SIMULATIONS):
 
             start_time = time.time()
             batch_ct = 0
+            
             while batch_ct < batch_size:
 
                 ## sample a patient from tracking_dict
-                patient = np.random.choice(list(tracking_dict.keys()), 1, replace = True)[0]
+                # patient = np.random.choice(list(tracking_dict.keys()), 1, replace = True)[0]
+                patient = patient_queue[patient_idx]
                 # print('patient =', patient)
 
                 context_vec = CONTEXT_VECTOR_dict[patient][0]
                 util_methods.set_context(context_vec) # set the context vector for the current episode
-
-                # sample a initial state s uniformly from the list of initial states INIT_STATES_LIST
-                # s_code = np.random.choice(INIT_STATES_LIST, 1, replace = True)[0]
-                # s_idx_init = state_code_to_index[s_code]
-
-                # choose the patient's initial state
-                # s_idx_init = CONTEXT_VECTOR_dict[patient][1]
-                
-                # print('tracking_dict[patient] =', tracking_dict[patient])
                 s_idx_init = tracking_dict[patient]['s_idx_init']
                 
                 util_methods.update_mu(s_idx_init)
@@ -234,13 +264,74 @@ for sim in range(NUMBER_SIMULATIONS):
                 C1b = C1_b_list[s_idx_init]
                 C2b = C2_b_list[s_idx_init]
                 util_methods.setConstraint(CONSTRAINT1, CONSTRAINT2)
-                util_methods.setCb(C1b, C2b)        
-
-                # calculate the R and C based on the true R and C models, regenerate for each episode/patient
-                util_methods.calculate_true_R_C(context_vec)
+                util_methods.setCb(C1b, C2b)                        
 
                 ## get the opt_value
-                if tracking_dict[patient]['visit_ct'] == 0: # not calculated yet
+                if tracking_dict[patient]['visit_ct'] == 20: # patient has been visited 20 times, remove from the tracking_dict
+
+                    # calculate the regret for the last visit
+                    val_k = tracking_dict[patient]['val_k']
+                    opt_value_LP_con = tracking_dict[patient]['opt_value_LP_con']
+                    cost1_k = tracking_dict[patient]['cost1_k']
+                    cost2_k = tracking_dict[patient]['cost2_k']
+
+                    obj_regret= abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0])
+                    con1_regret = max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1)
+                    con2_regret = max(0, cost2_k[s_idx_init, 0] - CONSTRAINT2)
+                    
+                    # save obj_regret, con1_regret, con2_regret
+                    save_cumulative_regret(episode, obj_regret, con1_regret, con2_regret, CONSTRAINT1, CONSTRAINT2, select_baseline_policy_ct)
+
+                    # dump the results
+                    if episode != 0 and episode%500== 0:
+                        filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+                        f = open(filename, 'ab')
+                        pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+                        f.close()
+                        objs = []
+                        cons1 = []
+                        cons2 = []
+                        R_est_err = []
+                        C1_est_err = []
+                        C2_est_err = []
+                        min_eign_sbp_list = []
+                        min_eign_hba1c_list = []
+                        min_eign_cvd_list = []
+
+                        filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+                        with open(filename, 'wb') as f:
+                            pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
+
+                    elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
+                        filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+                        f = open(filename, 'ab')
+                        pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
+                        f.close()
+
+                        filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+                        with open(filename, 'wb') as f:
+                            pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
+                    
+                    episode += 1 # increase the episode number / finished patient number
+                    print('episode =', episode, 'patient =', patient)
+                    util_methods.update_episode(episode) # update the episode number for the utility methods
+
+                    del tracking_dict[patient]
+                    print('patient =', patient, 'has been visited 20 times, remove from the tracking_dict', 'len(tracking_dict) =', len(tracking_dict))
+                    if len(tracking_dict) == 0: # no more patient in the tracking_dict
+                        empty_tracking_dict = True
+                        break
+                    else:
+                        patient_idx += 1
+                        continue # skip to the next patient
+
+                elif tracking_dict[patient]['visit_ct'] == 0: # not calculated yet
+                    # calculate the R and C based on the true R and C models, regenerate for each episode/patient
+                    R, R_y_pred, C1, C2 = util_methods.calculate_true_R_C(context_vec)
+                    tracking_dict[patient]['R'] = R
+                    tracking_dict[patient]['R_y_pred'] = R_y_pred
+                    tracking_dict[patient]['C1'] = C1
+                    tracking_dict[patient]['C2'] = C2
                 
                     # get the optimal and baseline policy for current patient with context_vec, and initial state s_idx
                     opt_policy_con, opt_value_LP_con, opt_cost1_LP_con, opt_cost2_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -')                     
@@ -264,6 +355,7 @@ for sim in range(NUMBER_SIMULATIONS):
                             empty_tracking_dict = True
                             break
                         else:
+                            patient_idx += 1
                             continue # skip to the next patient                        
                     
                     # +++++ select policy using the extended LP, by solving the DOPE problem, equation (10)
@@ -281,17 +373,11 @@ for sim in range(NUMBER_SIMULATIONS):
                     tracking_dict[patient]['cost1_k'] = cost1_k
                     tracking_dict[patient]['cost2_k'] = cost2_k
                     tracking_dict[patient]['q_k'] = q_k
-
-                elif tracking_dict[patient]['visit_ct'] == 20: # patient has been visited 20 times, remove from the tracking_dict                    
-                    del tracking_dict[patient]
-                    print('patient =', patient, 'has been visited 20 times, remove from the tracking_dict', 'len(tracking_dict) =', len(tracking_dict))
-                    if len(tracking_dict) == 0: # no more patient in the tracking_dict
-                        empty_tracking_dict = True
-                        break
-                    else:
-                        continue # skip to the next patient
                         
-                else:
+                else: # fetch the saved optimal and baseline policy for the current patient
+
+                    util_methods.set_true_R_C(tracking_dict[patient]['R'], tracking_dict[patient]['R_y_pred'], tracking_dict[patient]['C1'], tracking_dict[patient]['C2'])
+
                     opt_value_LP_con = tracking_dict[patient]['opt_value_LP_con']
                     pi_b = tracking_dict[patient]['pi_b']
                     val_b = tracking_dict[patient]['val_b']
@@ -304,9 +390,9 @@ for sim in range(NUMBER_SIMULATIONS):
                     cost2_k = tracking_dict[patient]['cost2_k']
                     q_k = tracking_dict[patient]['q_k']
                 
-                obj_regret_lst.append(abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]))
-                con1_regret_lst.append(max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1))
-                con2_regret_lst.append(max(0, cost2_k[s_idx_init, 0] - CONSTRAINT2))
+                # obj_regret_lst.append(abs(val_k[s_idx_init, 0] - opt_value_LP_con[s_idx_init, 0]))
+                # con1_regret_lst.append(max(0, cost1_k[s_idx_init, 0] - CONSTRAINT1))
+                # con2_regret_lst.append(max(0, cost2_k[s_idx_init, 0] - CONSTRAINT2))
 
                 ## run for 1 step
                 # s = s_idx_init # set the state to the initial state
@@ -318,7 +404,7 @@ for sim in range(NUMBER_SIMULATIONS):
                 # remove any negative probability in prob
                 prob = np.maximum(prob, 0)
                 prob = prob / np.sum(prob) # normalize the probability
-                a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
+                a = int(np.random.choice(ACTIONS, 1, replace=True, p=prob)) # select action based on the policy/probability
 
                 a_list.append(a)
                 ep_context_vec.append(context_vec)
@@ -338,15 +424,14 @@ for sim in range(NUMBER_SIMULATIONS):
                 tracking_dict[patient]['visit_ct'] += 1       
 
                 batch_ct += 1
-
-            # print('len(ep_context_vec) =', len(ep_context_vec))
-            # print('ep_context_vec[0] =', ep_context_vec[0])    
+                patient_idx += 1
+                if patient_idx == len(patient_queue): # go back to the first patient
+                    patient_idx = 0
             
             if empty_tracking_dict: # go back to create a new patients pool
                 break
             
             ## end of the batch, update the estimator!
-            util_methods.update_episode(episode) # update the episode number for the utility method
 
             # update the estimator model parameters
             util_methods.setCounts(ep_count_p, ep_count)
@@ -367,71 +452,12 @@ for sim in range(NUMBER_SIMULATIONS):
             # print('s_idx_init={}, cost1_k[s_idx_init, 0]={:.2f}, CONS1={:.2f}, max_cost1={:.2f}, cost2_k[s_idx_init, 0]={:.2f}, CONS2={:.2f}, max_cost2={:.2f},'.format(
             #     s_idx_init, cost1_k[s_idx_init, 0], CONSTRAINT1, max_cost1, cost2_k[s_idx_init, 0], CONSTRAINT2, max_cost2)) 
 
-            assert(len(obj_regret_lst) == batch_size)
-            obj_regret = np.mean(obj_regret_lst)
-            con1_regret = np.mean(con1_regret_lst)
-            con2_regret = np.mean(con2_regret_lst)
-
-            ## calculate the regrets
-            if episode == 0:
-                ObjRegret2[sim, episode] = obj_regret
-                Con1Regret2[sim, episode] = con1_regret
-                Con2Regret2[sim, episode] = con2_regret
-
-                if con1_regret > CONSTRAINT1 or con2_regret > CONSTRAINT2:
-                    NUMBER_INFEASIBILITIES[sim, episode] = 1
-            else:
-                ObjRegret2[sim, episode] = ObjRegret2[sim, episode - 1] + obj_regret # cumulative sum of objective regret
-                Con1Regret2[sim, episode] = Con1Regret2[sim, episode - 1] + con1_regret
-                Con2Regret2[sim, episode] = Con2Regret2[sim, episode - 1] + con2_regret
-
-                if con1_regret > CONSTRAINT1 or con2_regret > CONSTRAINT2:
-                    NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1] + 1 # count the number of infeasibilities until k episode
-                else:
-                    NUMBER_INFEASIBILITIES[sim, episode] = NUMBER_INFEASIBILITIES[sim, episode - 1]            
-
-            objs.append(ObjRegret2[sim, episode])
-            cons1.append(Con1Regret2[sim, episode])
-            cons2.append(Con2Regret2[sim, episode])
-
-            end_time = time.time()
-            dtime = end_time - start_time
-            print('Eps {}, s_idx_init= {}, ObjRegt = {:.2f}, Cons1Regt = {:.2f}, Cons2Regt = {:.2f}, Infeas = {}, Infeas in EXLP = {}, Time = {:.2f}, tracking_dict_len = {}\n'.format(
-                episode, s_idx_init, ObjRegret2[sim, episode], Con1Regret2[sim, episode], Con2Regret2[sim, episode], 
-                NUMBER_INFEASIBILITIES[sim, episode], select_baseline_policy_ct, dtime, len(tracking_dict)))
-
+            # assert(len(obj_regret_lst) == batch_size)
+            # obj_regret = np.mean(obj_regret_lst)
+            # con1_regret = np.mean(con1_regret_lst)
+            # con2_regret = np.mean(con2_regret_lst)
             
-            ## dump results out
-            if episode != 0 and episode%500== 0:
-                filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
-                f = open(filename, 'ab')
-                pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
-                f.close()
-                objs = []
-                cons1 = []
-                cons2 = []
-                R_est_err = []
-                C1_est_err = []
-                C2_est_err = []
-                min_eign_sbp_list = []
-                min_eign_hba1c_list = []
-                min_eign_cvd_list = []
-
-                filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
-                with open(filename, 'wb') as f:
-                    pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
-
-            elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-                filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
-                f = open(filename, 'ab')
-                pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
-                f.close()
-
-                filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
-                with open(filename, 'wb') as f:
-                    pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
             
-            episode += 1
         # end of while loop for not empty_tracking_dict
     # main episode loop, create new patients pool
         
