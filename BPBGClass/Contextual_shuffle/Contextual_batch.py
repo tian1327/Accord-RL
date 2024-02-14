@@ -263,6 +263,10 @@ for sim in range(NUMBER_SIMULATIONS):
 
                 if patient_idx == len(patient_queue): # go back to the first patient
                     patient_idx = 0
+                while patient_queue[patient_idx] not in tracking_dict:
+                    patient_idx += 1
+                    if patient_idx == len(patient_queue):
+                        patient_idx = 0
                 patient = patient_queue[patient_idx]
                 # print('patient =', patient)
 
@@ -295,7 +299,7 @@ for sim in range(NUMBER_SIMULATIONS):
                     save_cumulative_regret(episode, obj_regret, con1_regret, con2_regret, CONSTRAINT1, CONSTRAINT2, select_baseline_policy_ct)
 
                     # dump the results
-                    if episode != 0 and episode%500==0:
+                    if episode != 0 and episode%100==0:
                         filename = output_dir + '/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
                         f = open(filename, 'ab')
                         pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
