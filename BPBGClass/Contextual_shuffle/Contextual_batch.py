@@ -222,7 +222,7 @@ for sim in range(NUMBER_SIMULATIONS):
             tracking_dict[patient]['s_idx_init'] = s_idx_init
         
         patient_queue = list(tracking_dict.keys())
-        print('created the patients queue =', patient_queue)
+        print('\ncreated the patients queue =', patient_queue)
         empty_tracking_dict = False
         # for k, v in tracking_dict.items():
         #     print(k, v)
@@ -251,6 +251,9 @@ for sim in range(NUMBER_SIMULATIONS):
 
                 ## sample a patient from tracking_dict
                 # patient = np.random.choice(list(tracking_dict.keys()), 1, replace = True)[0]
+
+                if patient_idx == len(patient_queue): # go back to the first patient
+                    patient_idx = 0
                 patient = patient_queue[patient_idx]
                 # print('patient =', patient)
 
@@ -312,8 +315,8 @@ for sim in range(NUMBER_SIMULATIONS):
                         with open(filename, 'wb') as f:
                             pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
                     
-                    episode += 1 # increase the episode number / finished patient number
                     print('episode =', episode, 'patient =', patient)
+                    episode += 1 # increase the episode number / finished patient number                    
                     util_methods.update_episode(episode) # update the episode number for the utility methods
 
                     del tracking_dict[patient]
@@ -425,8 +428,6 @@ for sim in range(NUMBER_SIMULATIONS):
 
                 batch_ct += 1
                 patient_idx += 1
-                if patient_idx == len(patient_queue): # go back to the first patient
-                    patient_idx = 0
             
             if empty_tracking_dict: # go back to create a new patients pool
                 break
