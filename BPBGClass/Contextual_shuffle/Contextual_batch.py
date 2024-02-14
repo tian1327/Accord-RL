@@ -90,30 +90,39 @@ RUN_NUMBER = 100 #Change this field to set the seed for the experiment.
 
 use_gurobi = False # whether to use gurobi to solve the optimization problem
 NUMBER_SIMULATIONS = 1
-
-if len(sys.argv) > 1:
-    use_gurobi = sys.argv[1]
-print('use_gurobi =', use_gurobi)
-print('sample_data =', sample_data)
-print('random_action =', random_action)
-
 batch_size = 20 # batch size for updating the empirical model
 patient_interval = 10 # the interval for each patient to be visited
 pool_size = patient_interval
 # pool_size = 20 # pool size for the patients pool for overlapping analysis
+
+if len(sys.argv) > 1:
+    # use_gurobi = sys.argv[1]
+    batch_size = int(sys.argv[1])
+
+output_dir = f'output_bs{batch_size}'
+
+print('output_dir =', output_dir)
+print('use_gurobi =', use_gurobi)
+print('sample_data =', sample_data)
+print('random_action =', random_action)
 
 #--------------------------------------------------------------------------------------
 random.seed(int(RUN_NUMBER))
 np.random.seed(int(RUN_NUMBER))
 
 # remove old file
-old_filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+old_filename = output_dir+'/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
 if os.path.exists(old_filename):
     os.remove(old_filename)
     print("Removed old file: ", old_filename)
 
+# make the output directory if it does not exist
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+    print("Directory", output_dir, "is created")
+
 # Initialize:
-with open('output/model_contextual_BPBG.pkl', 'rb') as f:
+with open(f'output/model_contextual_BPBG.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, CONTEXT_VECTOR_dict, INIT_STATE_INDEX, INIT_STATES_LIST, 
     state_code_to_index, state_index_to_code, action_index_to_code,
     CONSTRAINT1_list, C1_b_list, CONSTRAINT2_list, C2_b_list, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
@@ -286,11 +295,12 @@ for sim in range(NUMBER_SIMULATIONS):
                     save_cumulative_regret(episode, obj_regret, con1_regret, con2_regret, CONSTRAINT1, CONSTRAINT2, select_baseline_policy_ct)
 
                     # dump the results
-                    if episode != 0 and episode%500== 0:
-                        filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+                    if episode != 0 and episode%500==0:
+                        filename = output_dir + '/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
                         f = open(filename, 'ab')
                         pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
                         f.close()
+                        print(f'episode={episode}, dumped results to {filename}')
                         objs = []
                         cons1 = []
                         cons2 = []
@@ -301,19 +311,22 @@ for sim in range(NUMBER_SIMULATIONS):
                         min_eign_hba1c_list = []
                         min_eign_cvd_list = []
 
-                        filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+                        filename = output_dir + '/CONTEXTUAL_BPBG_regr.pkl'
                         with open(filename, 'wb') as f:
                             pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
+                        print(f'episode={episode}, dumped results to {filename}')
 
                     elif episode == NUMBER_EPISODES-1: # dump results out at the end of the last episode
-                        filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
+                        filename = output_dir + '/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
                         f = open(filename, 'ab')
                         pickle.dump([R_est_err, C1_est_err, C2_est_err, min_eign_sbp_list, min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, objs, cons1, cons2, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
                         f.close()
+                        print(f'episode={episode}, dumped results to {filename}')
 
-                        filename = 'output/CONTEXTUAL_BPBG_regr.pkl'
+                        filename = output_dir + '/CONTEXTUAL_BPBG_regr.pkl'
                         with open(filename, 'wb') as f:
                             pickle.dump([util_methods.sbp_regr, util_methods.hba1c_regr, util_methods.cvdrisk_regr, util_methods.P_hat], f)
+                        print(f'episode={episode}, dumped results to {filename}')
                     
                     print('episode =', episode, 'patient =', patient)
                     episode += 1 # increase the episode number / finished patient number                    
@@ -471,6 +484,6 @@ Con1Regret_std = np.std(Con1Regret2, axis = 0)
 Con2Regret_std = np.std(Con2Regret2, axis = 0)
 
 # save the results as a pickle file
-filename = 'output/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
+filename = output_dir + '/CONTEXTUAL_regrets_' + str(RUN_NUMBER) + '.pkl'
 with open(filename, 'wb') as f:
     pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, ObjRegret_mean, ObjRegret_std, Con1Regret_mean, Con1Regret_std, Con2Regret_mean, Con2Regret_std], f)
