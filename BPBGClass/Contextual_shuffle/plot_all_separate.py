@@ -192,9 +192,10 @@ for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, m
 
 axs.grid(alpha=0.2)
 axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs.legend(loc = 'center right', prop={'size': 13})
+axs.legend(loc = 'upper left', prop={'size': 13})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Constraint Regret')
+axs.set_ylim([-2, 6.2e1])
 
 plt.savefig("BPBGClass_cons_regrets_batch.png", dpi=300, facecolor='w', edgecolor='w')
 plt.savefig("BPBGClass_cons_regrets_batch.pdf", dpi=300, facecolor='w', edgecolor='w')
