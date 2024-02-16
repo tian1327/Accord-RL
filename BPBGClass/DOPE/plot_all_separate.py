@@ -82,7 +82,7 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
-           '../Contextual_batch/output_bs20/CONTEXTUAL_opsrl100.pkl',
+           '../Contextual_shuffle/output_bs20/CONTEXTUAL_opsrl100.pkl',
            '../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
            #'output/DOPE_opsrl100.pkl', # this RUN# 100 has 39 Cons1Regret, thus not used
            #'output/DOPE_opsrl200.pkl',
