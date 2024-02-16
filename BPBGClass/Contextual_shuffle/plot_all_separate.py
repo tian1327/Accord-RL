@@ -81,9 +81,13 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
-           'output/CONTEXTUAL_opsrl100.pkl',
-           '../Contextual_shuffle_bs40/output/CONTEXTUAL_opsrl100.pkl',
-           '../Contextual_shuffle_bs100/output/CONTEXTUAL_opsrl100.pkl',
+           'output_bs10/CONTEXTUAL_opsrl100.pkl',
+           'output_bs20/CONTEXTUAL_opsrl100.pkl',
+           'output_bs40/CONTEXTUAL_opsrl100.pkl',
+        #    'output_bs50/CONTEXTUAL_opsrl100.pkl',
+        #    'output_bs60/CONTEXTUAL_opsrl100.pkl',
+           'output_bs100/CONTEXTUAL_opsrl100.pkl',
+        #    'output_bs200/CONTEXTUAL_opsrl100.pkl',
            #'output/DOPE_opsrl100.pkl', # this RUN# 100 has 39 Cons1Regret, thus not used
            #'output/DOPE_opsrl200.pkl',
         #    'output_final/DOPE_opsrl200.pkl', # good DOPE, increased K0 to 1000, no Cons1Regret
@@ -92,10 +96,28 @@ fn_list = [
         ]
 
 data_list = []
-label_list = ['COPS-MM (batch=20)', 'COPS-MM (batch=40)', 'COPS-MM (batch=100)', ]
-color_list = ['red', 'blue', 'green']
-linestyle_list = ['solid', 'solid', 'solid', ]
-marker_list = ['x', 'o', 's']
+label_list = ['COPS-MM (bs 10)', 
+              'COPS-MM (bs 20)',
+              'COPS-MM (bs 40)', 
+            #   'COPS-MM (bs 60)', 
+              'COPS-MM (bs 100)', 
+            #   'COPS-MM (bs 200)', 
+              ]
+color_list = ['red', 
+              'blue', 
+              'green', 
+              'black',
+            #   'purple',
+            #   'orange'
+              ]
+linestyle_list = ['solid' for _ in range(len(fn_list))]
+marker_list = ['v', 
+               'o', 
+               's', 
+               'D',
+            #    '^',
+            #    'p'
+               ]
 for fn in fn_list:
     data, _ = read_data(fn, NUMBER_SIMULATIONS, NUMBER_EPISODES_o)
 
@@ -134,10 +156,11 @@ for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, m
 
 axs.grid(alpha=0.2)
 axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs.legend(loc = 'upper left', prop={'size': 13})
+axs.legend(loc = 'upper left', prop={'size': 11})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Objective Regret')
-#axs.set_ylim([-0.1e3, 5e3])
+axs.set_ylim([-0.3e3, 1.2e4])
+
 
 plt.savefig("BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 # plt.savefig("../../NumericalResults/plots/png/BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
