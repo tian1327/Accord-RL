@@ -81,7 +81,8 @@ mark_every_interval = 2000 # marker point interval
 
 
 fn_list = [
-           'output_bs10/CONTEXTUAL_opsrl100.pkl',
+            '../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
+        #    'output_bs10/CONTEXTUAL_opsrl100.pkl',
            'output_bs20/CONTEXTUAL_opsrl100.pkl',
            'output_bs40/CONTEXTUAL_opsrl100.pkl',
         #    'output_bs50/CONTEXTUAL_opsrl100.pkl',
@@ -96,25 +97,25 @@ fn_list = [
         ]
 
 data_list = []
-label_list = ['COPS-MM (bs 10)', 
-              'COPS-MM (bs 20)',
-              'COPS-MM (bs 40)', 
+label_list = ['COPS-MM', 
+              'COPS-MM (batch 20)',
+              'COPS-MM (batch 40)', 
             #   'COPS-MM (bs 60)', 
-              'COPS-MM (bs 100)', 
+              'COPS-MM (batch 100)', 
             #   'COPS-MM (bs 200)', 
               ]
 color_list = ['red', 
               'blue', 
               'green', 
-              'black',
+              'saddlebrown',
             #   'purple',
             #   'orange'
               ]
 linestyle_list = ['solid' for _ in range(len(fn_list))]
-marker_list = ['v', 
+marker_list = ['D', 
+               'v', 
                'o', 
-               's', 
-               'D',
+               's',
             #    '^',
             #    'p'
                ]
@@ -156,13 +157,14 @@ for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, m
 
 axs.grid(alpha=0.2)
 axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
-axs.legend(loc = 'upper left', prop={'size': 11})
+axs.legend(loc = 'upper left', prop={'size': 13})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Objective Regret')
-axs.set_ylim([-0.3e3, 1.2e4])
+axs.set_ylim([-0.4e3, 1.2e4])
 
 
-plt.savefig("BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("BPBGClass_obj_regrets_batch.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("BPBGClass_obj_regrets_batch.pdf", dpi=300, facecolor='w', edgecolor='w') 
 # plt.savefig("../../NumericalResults/plots/png/BPBGClass_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 # plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_obj_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
 
@@ -194,7 +196,8 @@ axs.legend(loc = 'center right', prop={'size': 13})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Constraint Regret')
 
-plt.savefig("BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("BPBGClass_cons_regrets_batch.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("BPBGClass_cons_regrets_batch.pdf", dpi=300, facecolor='w', edgecolor='w')
 # plt.savefig("../../NumericalResults/plots/png/BPBGClass_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
 # plt.savefig("../../NumericalResults/plots/pdf/BPBGClass_cons_regrets.pdf", dpi=300, facecolor='w', edgecolor='w') 
 

@@ -207,3 +207,10 @@ python plot1.py output_bs10/CONTEXTUAL_opsrl100.pkl 40
 # plot the comparison of batchsize
 python plot_all_separate.py 3000
 ```
+
+2024/02/16 Friday
+1. Plot the batch update comparison COPS-MM vs. batch
+```bash
+cd Accord-RL/BPBGClass/Contextual_shuffle
+python plot_all_separate.py 
+```
