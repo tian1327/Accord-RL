@@ -16,22 +16,20 @@ start_time = time.time()
 # temp = sys.argv[1:]
 # RUN_NUMBER = int(temp[0])
 
-RUN_NUMBER = 11 #Change this to set the seed for the experiment.
-
+RUN_NUMBER = 100 #Change this to set the seed for the experiment.
 random.seed(RUN_NUMBER)
 np.random.seed(RUN_NUMBER)
 
 #Initialize:
-f = open('model-in.pckl', 'rb')
+f = open('output/model-in.pckl', 'rb')
 [NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, CONSTRAINT, N_STATES, actions, EPISODE_LENGTH, DELTA] = pickle.load(f)
 f.close()
 
-
-f = open('solution-in.pckl', 'rb')
+f = open('output/solution-in.pckl', 'rb')
 [opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon] = pickle.load(f)
 f.close()
 
-f = open('base-in.pckl', 'rb')
+f = open('output/base-in.pckl', 'rb')
 [pi_b, val_b, cost_b, q_b] = pickle.load(f)
 f.close()
 
@@ -64,6 +62,8 @@ for sim in range(NUMBER_SIMULATIONS):
     objs = []
     cons = []
     for episode in range(NUMBER_EPISODES):
+        if episode%100 == 0:
+            print("Simulation = ", sim, "Episode = ", episode)
         util_methods.setCounts(ep_count_p, ep_count)
         util_methods.update_empirical_model(0)
         util_methods.compute_confidence_intervals(L, 1)
@@ -98,45 +98,44 @@ for sim in range(NUMBER_SIMULATIONS):
             ep_count_p[s, a, next_state] += 1
             s = next_state
             
-        if episode != 0 and episode%50000== 0:
+        if episode != 0 and episode%100== 0:
 
-            filename = 'efroni-in' + str(RUN_NUMBER) + '.pckl'
+            filename = 'output/OptCMDP_opsrl-in' + str(RUN_NUMBER) + '.pckl'
             f = open(filename, 'ab')
             pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
             objs = []
             cons = []
         elif episode == NUMBER_EPISODES-1:
-            filename = 'efroni-in' + str(RUN_NUMBER) + '.pckl'
+            filename = 'output/OptCMDP_opsrl-in' + str(RUN_NUMBER) + '.pckl'
             f = open(filename, 'ab')
             pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, objs , cons, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
-            f.close()
+            f.close()       
 
-        
-
-ObjRegret_mean = np.mean(ObjRegret2, axis = 0)
-ConRegret_mean = np.mean(ConRegret2, axis = 0)
-ObjRegret_std = np.std(ObjRegret2, axis = 0)
-ConRegret_std = np.std(ConRegret2, axis = 0)
+# ObjRegret_mean = np.mean(ObjRegret2, axis = 0)
+# ConRegret_mean = np.mean(ConRegret2, axis = 0)
+# ObjRegret_std = np.std(ObjRegret2, axis = 0)
+# ConRegret_std = np.std(ConRegret2, axis = 0)
 
 
-title = 'OptCMDP' + str(RUN_NUMBER)
+# title = 'output/OptCMDP' + str(RUN_NUMBER)
 
-plt.figure()
-plt.plot(range(NUMBER_EPISODES), ObjRegret_mean)
-plt.fill_between(range(NUMBER_EPISODES), ObjRegret_mean - ObjRegret_std, ObjRegret_mean + ObjRegret_std, alpha = 0.5)
-plt.grid()
-plt.xlabel('Episodes')
-plt.ylabel('Objective Regret')
-plt.title(title)
-plt.show()
+# plt.figure()
+# plt.plot(range(NUMBER_EPISODES), ObjRegret_mean)
+# plt.fill_between(range(NUMBER_EPISODES), ObjRegret_mean - ObjRegret_std, ObjRegret_mean + ObjRegret_std, alpha = 0.5)
+# plt.grid()
+# plt.xlabel('Episodes')
+# plt.ylabel('Objective Regret')
+# plt.title(title)
+# plt.savefig(title + '_ObjRegret.png')
 
-plt.figure()
-plt.plot(range(NUMBER_EPISODES), ConRegret_mean)
-plt.fill_between(range(NUMBER_EPISODES), ConRegret_mean - ConRegret_std, ConRegret_mean + ConRegret_std, alpha = 0.5)
-plt.grid()
-plt.xlabel('Episodes')
-plt.ylabel('Constraint Regret')
-plt.title(title)
-plt.show()
+# plt.figure()
+# plt.plot(range(NUMBER_EPISODES), ConRegret_mean)
+# plt.fill_between(range(NUMBER_EPISODES), ConRegret_mean - ConRegret_std, ConRegret_mean + ConRegret_std, alpha = 0.5)
+# plt.grid()
+# plt.xlabel('Episodes')
+# plt.ylabel('Constraint Regret')
+# plt.title(title)
+# plt.savefig(title + '_ConRegret.png')
+# # plt.show()
 
