@@ -22,9 +22,10 @@ def get_l2norm_diff(model, model_hat):
 
 
 class utils:
-    def __init__(self, eps, delta, M, P, R_model, C1_model, C2_model, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
-                INIT_STATE_INDEX, state_index_to_code, action_index_to_code, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, 
-                CONSTRAINT1, C1b, CONSTRAINT2, C2b, use_gurobi):
+    def __init__(self, eps, delta, M, P, true_theta,
+                CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
+                INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, 
+                CONSTRAINT1, C1b, use_gurobi):
 
         self.use_gurobi = use_gurobi
         self.EPISODE_LENGTH = EPISODE_LENGTH
@@ -36,30 +37,23 @@ class utils:
         self.R = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.R_obs = np.zeros((self.N_STATES,self.N_ACTIONS)) # observed CVDRisk with noises added
         self.R_y_pred = np.zeros((self.N_STATES,self.N_ACTIONS)) # predicted value from CVDRisk regression model
-        self.C1 = np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.C2 = np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.R_model = R_model
-        self.C1_model = C1_model
-        self.C2_model = C2_model
+        self.C1 = np.zeros((self.N_STATES, self.N_ACTIONS))
+
+        self.true_theta = true_theta
         self.CONTEXT_VECTOR = None
-        self.state_index_to_code = state_index_to_code
-        self.action_index_to_code = action_index_to_code
 
         self.X = None # observed context vectors from frist episode to current episode
         self.S = None # observed state vector from frist episode to current episode
         self.A = None # observed action vector from frist episode to current episode
         self.sbp_cont = None # observed sbp feedback from frist episode to current episode
-        self.hba1c_cont = None # observed hba1c feedback from frist episode to current episode
         self.cvdrisk = None # observed cvdrisk feedback from frist episode to current episode
 
         self.cvdrisk_regr = None # regression models for cvdrisk feedback using upto current observations
         self.sbp_regr = None
-        self.hba1c_regr = None
 
         # for connfidence bounds
         self.episode = 0
         self.param_c1 = 10.0
-        self.param_c2 = 1.0
         self.param_2 = 0.02
         self.param_r = 0.25
 
@@ -77,7 +71,6 @@ class utils:
         self.delta = delta
         self.M = M
         self.C1b = C1b
-        self.C2b = C2b
         #self.ENV_Q_VALUES = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS))
         
         self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -85,7 +78,6 @@ class utils:
         
         self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.C1_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.C2_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.Total_emp_reward = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.Total_emp_cost = np.zeros((self.N_STATES,self.N_ACTIONS))
         #self.R_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
@@ -94,7 +86,6 @@ class utils:
         self.alpha_p = 1.0
         self.alpha_r = 0.1
         self.alpha_c1 = 1.0
-        self.alpha_c2 = 1.0
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
@@ -103,7 +94,6 @@ class utils:
         self.beta_prob_2 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.beta_prob_T = {}
         self.sbp_confidence = {}
-        self.hba1c_confidence = {}
         self.cvdrisk_confidence = {}
         self.P_confidence = {}
         self.Psparse = [[[] for i in range(self.N_ACTIONS)] for j in range(self.N_STATES)] # dict(), [s][a] --> list of s'
@@ -115,7 +105,6 @@ class utils:
         self.mu[INIT_STATE_INDEX] = 1.0 # initial state is fixed to most frequent BLR state 
 
         self.CONSTRAINT1 = CONSTRAINT1
-        self.CONSTRAINT2 = CONSTRAINT2
        
         self.R_Tao = {}
         for s in range(self.N_STATES):
@@ -170,13 +159,11 @@ class utils:
         self.hba1c_regr = hba1c_regr
         self.cvdrisk_regr = cvdrisk_regr
 
-    def setConstraint(self, CONSTRAINT1, CONSTRAINT2):
+    def setConstraint(self, CONSTRAINT1):
         self.CONSTRAINT1 = CONSTRAINT1
-        self.CONSTRAINT2 = CONSTRAINT2
     
-    def setCb(self, C1b, C2b):
+    def setCb(self, C1b):
         self.C1b = C1b
-        self.C2b = C2b
 
     def update_episode(self, episode):
         self.episode = episode
@@ -184,43 +171,65 @@ class utils:
     def set_context(self, CONTEXT_VECTOR):
         self.CONTEXT_VECTOR = CONTEXT_VECTOR
 
-    # calculate the true reward and cost for each state-action pair using the context vector and offline R and C models
+    # calculate the true reward and cost for each state-action pair using the context vector and true_theta 
     def calculate_true_R_C(self, context_vec):
-        # print('\ncontext_vec: ', context_vec)
-        # print('self.state_index_to_code: ', self.state_index_to_code)
-        # print('self.action_index_to_code: ', self.action_index_to_code)
 
-        for s in range(self.N_STATES):
-            for a in self.ACTIONS[s]:
-                state_code = self.state_index_to_code[s]
-                action_code = self.action_index_to_code[a]
-                # convert state and action code digit by digit to a list of 0 and 1
-                state_code_list = [int(x) for x in list(state_code)]
-                action_code_list = [int(x) for x in list(action_code)]
-            
-                # concatenate state and action code to the back of context vector
-                R_input = np.concatenate((context_vec, np.array(state_code_list), np.array(action_code_list)), axis=0)
-                # print('\n---s: ', s, 'a: ', a)
-                # print('---np.array(state_code_list):', np.array(state_code_list))
-                # print('---np.array(action_code_list):', np.array(action_code_list))
-                # print('---R_input.shape ', R_input.shape)
-                # print('---R_input: ', R_input)
+        N_STATES = self.N_STATES
+        ACTIONS_PER_STATE = self.ACTIONS
 
-                y_pred = self.R_model.predict(R_input.reshape(1, -1))   
-                # print('---y_pred: ', y_pred)
-                reward = 1.0 /(1.0+np.exp(-y_pred))
-                # print('---reward: ', reward)
+        d_prob = 
+        
+        # calculate the P matrix
+        for s in range(N_STATES):
+            l = len(ACTIONS_PER_STATE[s])
+            R[s] = np.zeros(l)
+            C[s] = np.zeros(l)
+            P[s] = {}
+            for a in ACTIONS_PER_STATE[s]:
+                C[s][a] = O(a) + h(s+a) # cost of taking action a in state s = order cost + holding cost, why is h(s+a) instead of h(s)?
+                P[s][a] = np.zeros(N_STATES) # transition probability matrix
+                for d, prob in d_prob.items(): 
+                    if d < 0: # handle the negative demand
+                        d = 0
+                    s_ = s + a - d # next state
+                    if s_ < 0:
+                        s_ = 0
+                    elif s_ > N_STATES - 1:
+                        s_ = N_STATES - 1 # make sure next state is within bounds [0, N_STATES-1]
+                        
+                    P[s][a][s_] += prob # assign transition probability based on demand probability
+                    
+                R[s][a] = 0
 
-                self.R[s][a] = reward
+        # fill in the R matrix
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:        
+            for d, prob in d_prob.items():
+                    s_ = min(max(0, s+a-d), N_STATES-1)
+                    if s + a - d >= 0:
+                        R[s][a] += P[s][a][s_]*prob # probability of demand d * revenue from demand d = expected revenue
+                    else:
+                        R[s][a] += 0
 
-                self.R_y_pred[s][a] = y_pred
-                # self.R_obs[s][a] = obs_reward
+        r_max = R[0][0]
+        c_max = C[0][0]
 
-                C_input = np.concatenate((context_vec, np.array(action_code_list)), axis=0)
-                self.C1[s][a] = self.C1_model.predict(C_input.reshape(1, -1))
-                self.C2[s][a] = self.C2_model.predict(C_input.reshape(1, -1))
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:
+                if C[s][a] > c_max:
+                    c_max = C[s][a]
+                if R[s][a] > r_max:
+                    r_max = R[s][a]
 
-                # print('s: ', s, 'a: ', a, 'state_code: ', state_code, 'action_code: ', action_code, 'R_input: ', R_input, 'C_input: ', C_input, 'self.R[s][a]: ', self.R[s][a], 'self.C[s][a]: ', self.C[s][a])
+        # normalize rewards and costs to be between 0 and 1
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:
+                C[s][a] = C[s][a]/c_max
+                R[s][a] = R[s][a]/r_max
+        
+        self.R = R
+        self.C1 = C
+
 
     def calculate_est_R_C(self,):
 
@@ -247,10 +256,7 @@ class utils:
 
                 C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
                 cost1 = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
-                cost2 = self.hba1c_regr.predict(C_input.reshape(1, -1))[0]
                 self.C1_hat[s][a] = cost1
-                self.C2_hat[s][a] = cost2
-
 
 
     def add_ep_rewards_costs(self, ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_hba1c_cont, ep_cvdrisk):
@@ -460,7 +466,6 @@ class utils:
         R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
         
         C1_est_error = get_l2norm_diff(self.C1_model, self.sbp_regr)
-        C2_est_error = get_l2norm_diff(self.C2_model, self.hba1c_regr)
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
         for s in range(self.N_STATES):
@@ -488,7 +493,6 @@ class utils:
                 cost1 = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
                 cost2 = self.hba1c_regr.predict(C_input.reshape(1, -1))[0]
                 self.C1_hat[s][a] = cost1
-                self.C2_hat[s][a] = cost2
                 # print('cost: ', cost)
                 # print('cost.shape: ', cost.shape)
                 # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
@@ -516,9 +520,8 @@ class utils:
         # instead we do this in the compute_confidence_interval function
 
 
-    def update_CONSTRAINT(self, new_CONSTRAINT1, new_CONSTRAINT2):
+    def update_CONSTRAINT(self, new_CONSTRAINT1):
         self.CONSTRAINT1 = new_CONSTRAINT1
-        self.CONSTRAINT2 = new_CONSTRAINT2
 
     def step(self, s, a, h, add_noises=True):  # take a step in the environment
         # h is not used here
@@ -544,12 +547,10 @@ class utils:
 
         if add_noises:
             cost1 = self.C1[s][a] + np.random.normal(0, 5) # this is the sbp feedback, not the deviation
-            cost2 = self.C2[s][a] + np.random.normal(0, 0.1) # this is the hba1c feedback, not the deviation
         else:
             cost1 = self.C1[s][a]
-            cost2 = self.C2[s][a]
 
-        return next_state, rew, cost1, cost2
+        return next_state, rew, cost1
 
 
     def update_mu(self, init_state):
@@ -888,9 +889,6 @@ class utils:
         opt_prob += p.lpSum([q[(h,s,a)] * ( max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125.0, 0)) 
                     for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
 
-        opt_prob += p.lpSum([q[(h,s,a)] * ( max(7.0-self.C2[s][a], 0) + max(self.C2[s][a]-7.9, 0)) 
-                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT2 <= 0 
-
 
         # opt_prob += p.lpSum([q[(h,s,a)] * self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
             
@@ -960,7 +958,6 @@ class utils:
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
                 # con_policy  += opt_q[h,s,a]*(max(0, 110-self.C[s][a]) + max(0, self.C[s][a]-125)) # since the cost here is the SBP feedback
                 con1_policy  += opt_q[h,s,a]*( max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) ) # since the cost here is the SBP feedback
-                con2_policy  += opt_q[h,s,a]*( max(0, 7.0-self.C2[s][a]) + max(0, self.C2[s][a]-7.9)) # since the cost here is the hba1c feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
@@ -973,7 +970,7 @@ class utils:
                 ", cost2 of policy =", round(con2_policy,4))
 
         # evaluate the optimal policy using finite horizon policy evaluation
-        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2) 
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1) 
                                                                                                                                                                           
         return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, q_policy, p.LpStatus[status]
                                                                                                                                                                                   
@@ -1002,7 +999,6 @@ class utils:
             
         r_k = {}
         c1_k = {}
-        c2_k = {}
         for s in range(self.N_STATES):
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
@@ -1014,7 +1010,6 @@ class utils:
                 r_k[s][a] = max(0, self.R_hat[s][a] - self.alpha_r * self.cvdrisk_confidence[s][a])
 
                 c1_k[s][a] = max(0, 110-(self.C1_hat[s][a] - self.alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]) - 125)
-                c2_k[s][a] = max(0, 7.0-(self.C2_hat[s][a] - self.alpha_c2 * self.hba1c_confidence[s][a])) + max(0, (self.C2_hat[s][a] + self.alpha_c2 * self.hba1c_confidence[s][a]) - 7.9)
 
         # objective function
         # equation (18a) in the paper
@@ -1030,12 +1025,6 @@ class utils:
                                             for a in self.ACTIONS[s] 
                                             for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT1 <= 0
 
-        opt_prob += p.lpSum([z[(h,s,a,s_1)]* (c2_k[s][a]) 
-                                            for h in range(self.EPISODE_LENGTH) 
-                                            for s in range(self.N_STATES) 
-                                            for a in self.ACTIONS[s] 
-                                            for s_1 in self.Psparse[s][a]]) - self.CONSTRAINT2 <= 0
-        
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
                 z_list = [z[(h,s,a,s_1)] for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]]
@@ -1104,7 +1093,7 @@ class utils:
                     for a in self.ACTIONS[s]:
                         opt_policy[s,h,a] = opt_policy[s,h,a]/sum_prob # normalize the policy to make sure the sum of the probabilities is 1
 
-        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, p.LpStatus[status], q_policy
@@ -1119,7 +1108,7 @@ class utils:
                 for a in self.ACTIONS[s]:
                     opt_policy[s,h,a] = 1/len(self.ACTIONS[s])
 
-        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1, self.C2)
+        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, 'Optimal', q_policy
@@ -1389,15 +1378,12 @@ class utils:
         # initialize the last state for the value and cost, and q
         for s in range(self.N_STATES):
             x1 = 0
-            x2 = 0
             for a in self.ACTIONS[s]:
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C[s][a]) + max(0, C[s][a]-125)) 
-                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp
-                x2 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9)) # hba1c
+                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp                
 
             c1[s, self.EPISODE_LENGTH-1] = x1 #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
-            c2[s, self.EPISODE_LENGTH-1] = x2 
 
             for a in self.ACTIONS[s]:
                 q[s, self.EPISODE_LENGTH-1, a] = R[s][a]
@@ -1408,17 +1394,14 @@ class utils:
             for s in range(self.N_STATES):
                 x = 0
                 y1 = 0
-                y2 = 0
                 for a in self.ACTIONS[s]:
                     x += policy[s,h,a]*R[s][a]
                     # y += policy[s,h,a]*C[s][a]
                     # y += policy[s,h,a]*(max(0, 110-C[s][a]) + max(0, C[s][a]-125))
                     y1 += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp deviation
-                    y2 += policy[s,h,a]*(max(0, 7.0-C2[s][a]) + max(0, C2[s][a]-7.9))
 
                 R_policy[s,h] = x # expected reward of the state s at time h under the policy
                 C1_policy[s,h] = y1 # expected cost of the state s at time h under the policy
-                C2_policy[s,h] = y2 # expected cost of the state s at time h under the policy
 
                 for s_1 in range(self.N_STATES):
                     z = 0
@@ -1429,8 +1412,7 @@ class utils:
         # going backwards in timesteps to calculate the cumulative value and cost of the policy
         for h in range(self.EPISODE_LENGTH-2,-1,-1):
             for s in range(self.N_STATES):
-                c1[s,h] = C1_policy[s,h] + np.dot(P_policy[s,h,:], c1[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy
-                c2[s,h] = C2_policy[s,h] + np.dot(P_policy[s,h,:], c2[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy
+                c1[s,h] = C1_policy[s,h] + np.dot(P_policy[s,h,:], c1[:,h+1]) # expected cumulative cost of the state s at time h under the policy = expected cost of the state s at time h under the policy + expected cumulative cost of the state s at time h+1 under the policy            
                 for a in self.ACTIONS[s]:
                     z = 0
                     for s_ in range(self.N_STATES):
@@ -1439,7 +1421,7 @@ class utils:
                 v[s,h] = np.dot(q[s, h, :],policy[s, h, :]) # expected cumulative value, regardless of the action taken  
         #print("evaluation",v)                
 
-        return q, v, c1, c2
+        return q, v, c1
 
 
     def compute_qVals_EVI(self, Rx):

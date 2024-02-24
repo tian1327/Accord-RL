@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from UtilityMethods_in import utils
+from UtilityMethods import utils
 import sys
 import pickle
 import time
@@ -122,28 +122,26 @@ c_max = C[0][0]
 print("P")
 pp.pprint(P)
 
-for s in range(N_STATES):
-    for a in ACTIONS_PER_STATE[s]:
-        if C[s][a] > c_max:
-            c_max = C[s][a]
-        if R[s][a] > r_max:
-            r_max = R[s][a]
+# for s in range(N_STATES):
+#     for a in ACTIONS_PER_STATE[s]:
+#         if C[s][a] > c_max:
+#             c_max = C[s][a]
+#         if R[s][a] > r_max:
+#             r_max = R[s][a]
 
-print("r_max =", r_max)
-print("c_max =", c_max)
+# print("r_max =", r_max)
+# print("c_max =", c_max)
 
-# normalize rewards and costs to be between 0 and 1
-for s in range(N_STATES):
-    for a in ACTIONS_PER_STATE[s]:
-        C[s][a] = C[s][a]/c_max
-        R[s][a] = R[s][a]/r_max
+# # normalize rewards and costs to be between 0 and 1
+# for s in range(N_STATES):
+#     for a in ACTIONS_PER_STATE[s]:
+#         C[s][a] = C[s][a]/c_max
+#         R[s][a] = R[s][a]/r_max
 
 EPISODE_LENGTH = 7
 CONSTRAINT = EPISODE_LENGTH/2
 C_b = CONSTRAINT/5 
 
-NUMBER_EPISODES = 3e4
-NUMBER_SIMULATIONS = 1
 EPS = 0.01
 M = 0
 delta = 0.01
@@ -152,27 +150,38 @@ delta = 0.01
 if not os.path.exists('output'):
     os.makedirs('output')
 
+# dump the model settings and parameters to a pickle file
+CONTEXT_VEC_LENGTH = 8
+ACTION_CODE_LENGTH = 1
+INIT_STATE_INDEX = 0
+print('CONTEXT_VEC_LENGTH =', CONTEXT_VEC_LENGTH)
+print('ACTION_CODE_LENGTH =', ACTION_CODE_LENGTH)
 
-# constrained and unconstrained optimal solution
-util_methods_1 = utils(EPS, delta, M, P, R, C, EPISODE_LENGTH, N_STATES, ACTIONS_PER_STATE, CONSTRAINT, C_b)
-opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con = util_methods_1.compute_opt_LP_Constrained(0) # constrained MDP
-opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon = util_methods_1.compute_opt_LP_Unconstrained(0) # unconstrained = standard MDP, not used in DOPE
-f = open('output/solution-in.pckl', 'wb')
-pickle.dump([opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon], f)
-f.close()
+with open('output/model_contextual.pkl', 'wb') as f:
+    pickle.dump([P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, true_theta,
+                CONSTRAINT, C_b, N_STATES, ACTIONS_PER_STATE, EPISODE_LENGTH, delta], f)
 
-# base solution
-util_methods_1 = utils(EPS, delta, M, P, R , C, EPISODE_LENGTH, N_STATES, ACTIONS_PER_STATE, C_b, C_b)
-policy_b, value_b, cost_b, q_b = util_methods_1.compute_opt_LP_Constrained(0)
-f = open('output/base-in.pckl', 'wb')
-pickle.dump([policy_b, value_b, cost_b, q_b], f)
-f.close()
 
-f = open('output/model-in.pckl', 'wb')
-pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, CONSTRAINT, N_STATES, ACTIONS_PER_STATE, EPISODE_LENGTH, delta], f)
-f.close()
+# # constrained and unconstrained optimal solution
+# util_methods_1 = utils(EPS, delta, M, P, R, C, EPISODE_LENGTH, N_STATES, ACTIONS_PER_STATE, CONSTRAINT, C_b)
+# opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con = util_methods_1.compute_opt_LP_Constrained(0) # constrained MDP
+# opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon = util_methods_1.compute_opt_LP_Unconstrained(0) # unconstrained = standard MDP, not used in DOPE
+# f = open('output/solution-in.pckl', 'wb')
+# pickle.dump([opt_policy_con, opt_value_LP_con, opt_cost_LP_con, opt_q_con, opt_policy_uncon, opt_value_LP_uncon, opt_cost_LP_uncon, opt_q_uncon], f)
+# f.close()
 
-print('\n*******')
-print("opt_value_LP_uncon[0, 0] =",opt_value_LP_uncon[0, 0])
-print("opt_value_LP_con[0, 0] =",opt_value_LP_con[0, 0])
-print("value_b[0, 0] =",value_b[0, 0])
+# # base solution
+# util_methods_1 = utils(EPS, delta, M, P, R , C, EPISODE_LENGTH, N_STATES, ACTIONS_PER_STATE, C_b, C_b)
+# policy_b, value_b, cost_b, q_b = util_methods_1.compute_opt_LP_Constrained(0)
+# f = open('output/base-in.pckl', 'wb')
+# pickle.dump([policy_b, value_b, cost_b, q_b], f)
+# f.close()
+
+# f = open('output/model-in.pckl', 'wb')
+# pickle.dump([NUMBER_SIMULATIONS, NUMBER_EPISODES, P, R, C, CONSTRAINT, N_STATES, ACTIONS_PER_STATE, EPISODE_LENGTH, delta], f)
+# f.close()
+
+# print('\n*******')
+# print("opt_value_LP_uncon[0, 0] =",opt_value_LP_uncon[0, 0])
+# print("opt_value_LP_con[0, 0] =",opt_value_LP_con[0, 0])
+# print("value_b[0, 0] =",value_b[0, 0])
