@@ -9,6 +9,7 @@ plots/
 *.npy
 *.pdf
 *.pkl
+*.pckl
 *.csv
 *.vscode
 

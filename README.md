@@ -214,3 +214,7 @@ python plot_all_separate.py 3000
 cd Accord-RL/BPBGClass/Contextual_shuffle
 python plot_all_separate.py 
 ```
+
+2024/02/21 Wednesday
+1. Setup the inventory control problem
+2. 
