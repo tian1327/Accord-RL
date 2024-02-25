@@ -224,12 +224,12 @@ cd Accord-RL/InventoryControl/DOPE
 python model-in.py
 
 # run different algorithms
-python DOPE.py
-python OptCMDP.py
-python OptPessLP.py
+python DOPE-in.py
+python OptCMDP-in.py
+python OptPessLP-in.py
 
 # plots
-python plot_all.py 3e4
+python plot_all.py 30000
 ```
 
 2. Run the Contextual algorithm for the inventory control problem

@@ -5,6 +5,7 @@ import math
 import sys
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
+from model_contextual import cal_d_prob, f, O, h
 
 # define a function!!!
 def get_l2norm_diff(model, model_hat):
@@ -20,9 +21,20 @@ def get_l2norm_diff(model, model_hat):
     
     return model_est_error
 
+def cal_d_prob_context(context_vec, true_theta):
+
+    N=3000
+    # stack the context_vec vertically for N times
+    X = np.tile(context_vec, (N, 1))
+    # print('X.shape: ', X.shape)
+    # print('context_vec: ', context_vec)
+
+    d_prob = cal_d_prob(X, true_theta)
+
+    return d_prob
 
 class utils:
-    def __init__(self, eps, delta, M, P, true_theta,
+    def __init__(self, eps, delta, M, P, true_theta, d_prob_sample,
                 CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                 INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, 
                 CONSTRAINT1, C1b, use_gurobi):
@@ -40,7 +52,9 @@ class utils:
         self.C1 = np.zeros((self.N_STATES, self.N_ACTIONS))
 
         self.true_theta = true_theta
+        self.d_prob_sample = d_prob_sample
         self.CONTEXT_VECTOR = None
+        self.d_prob = None # the demand probability distribution given the current context vector and true_theta
 
         self.X = None # observed context vectors from frist episode to current episode
         self.S = None # observed state vector from frist episode to current episode
@@ -125,7 +139,6 @@ class utils:
             self.beta_prob_2[s] = np.zeros(l)
             self.beta_prob_T[s] = np.zeros(l)
             self.sbp_confidence[s] = np.zeros(l)
-            self.hba1c_confidence[s] = np.zeros(l)
             self.cvdrisk_confidence[s] = np.zeros(l)
             self.P_confidence[s] = np.zeros(l)
             self.NUMBER_OF_OCCURANCES_p[s] = np.zeros((l, N_STATES)) # initialize the number of occurences of [s][a, s']
@@ -177,8 +190,12 @@ class utils:
         N_STATES = self.N_STATES
         ACTIONS_PER_STATE = self.ACTIONS
 
-        d_prob = 
-        
+        d_prob = cal_d_prob_context(context_vec, self.true_theta)
+
+        P = {} # dictionary of transition probability matrices
+        R = {} # dictionary of reward matrices
+        C = {} # dictionary of cost matrices
+
         # calculate the P matrix
         for s in range(N_STATES):
             l = len(ACTIONS_PER_STATE[s])
@@ -204,10 +221,10 @@ class utils:
         # fill in the R matrix
         for s in range(N_STATES):
             for a in ACTIONS_PER_STATE[s]:        
-            for d, prob in d_prob.items():
+                for d, prob in d_prob.items():
                     s_ = min(max(0, s+a-d), N_STATES-1)
                     if s + a - d >= 0:
-                        R[s][a] += P[s][a][s_]*prob # probability of demand d * revenue from demand d = expected revenue
+                        R[s][a] += P[s][a][s_]*f(d) # probability of demand d * revenue from demand d = expected revenue
                     else:
                         R[s][a] += 0
 
@@ -713,8 +730,6 @@ class utils:
 
                 # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
                 self.sbp_confidence[s][a] = self.param_c1 * np.log(self.episode) * np.sqrt(prod)
-                self.hba1c_confidence[s][a] = self.param_c2 * np.log(self.episode) * np.sqrt(prod)
-                # print('self.hba1c_confidence[s][a]: ', self.hba1c_confidence[s][a])
 
                 #---------- compute the confidence intervals for the CVDRisk_feedback
                 xsa_vec.reshape(1, -1)
@@ -732,7 +747,6 @@ class utils:
                 self.cvdrisk_confidence[s][a] = self.param_r * np.log(self.episode) * np.sqrt(prod) + end_term
                 # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
         
-        # print('self.hba1c_confidence[1][1]: ', self.hba1c_confidence[1][1])
         # print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
         return min_eigenvalue_cvd, min_eigenvalue_sbp, min_eigenvalue_hba1c
@@ -882,15 +896,11 @@ class utils:
                             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) 
             
         # constraints
-        # sbp within the range [110, 125] for all time steps
-        # opt_prob += p.lpSum([q[(h,s,a)] * (max(110-self.C[s][a], 0) + max(self.C[s][a]-125, 0)) 
-        #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
-
-        opt_prob += p.lpSum([q[(h,s,a)] * ( max(110.0-self.C1[s][a], 0) + max(self.C1[s][a]-125.0, 0)) 
-                    for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
+        # opt_prob += p.lpSum([q[(h,s,a)] * self.C1[s][a] 
+        #             for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
 
 
-        # opt_prob += p.lpSum([q[(h,s,a)] * self.C[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT <= 0 
+        opt_prob += p.lpSum([q[(h,s,a)] * self.C1[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s]]) - self.CONSTRAINT1 <= 0 
             
         for h in range(1,self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
@@ -941,12 +951,11 @@ class utils:
                 #optimal_policy[s,h] = int(np.argmax(probs))
                                                                                                                                                                   
         if ep != 0:
-            return opt_policy, 0, 0, 0, 0, p.LpStatus[status]
+            return opt_policy, 0, 0, 0, p.LpStatus[status]
         
         # calculate the results to double check with the results obtained from self.FiniteHorizon_Policy_evaluation()
         val_policy = 0
         con1_policy = 0
-        con2_policy = 0
         for h in range(self.EPISODE_LENGTH):
          for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
@@ -957,7 +966,7 @@ class utils:
                     
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
                 # con_policy  += opt_q[h,s,a]*(max(0, 110-self.C[s][a]) + max(0, self.C[s][a]-125)) # since the cost here is the SBP feedback
-                con1_policy  += opt_q[h,s,a]*( max(0, 110.0-self.C1[s][a]) + max(0, self.C1[s][a]-125.0) ) # since the cost here is the SBP feedback
+                con1_policy  += opt_q[h,s,a]*(self.C[s][a]) # since the cost here is the SBP feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
@@ -966,13 +975,13 @@ class utils:
         print(msg, p.LpStatus[status], 
                 "- best value constrained:", round(p.value(opt_prob.objective),4), 
                 ", value from the conLPsolver: value of policy =", round(val_policy,4), 
-                ", cost1 of policy =", round(con1_policy,4),
-                ", cost2 of policy =", round(con2_policy,4))
+                ", cost1 of policy =", round(con1_policy,4)
+               )
 
         # evaluate the optimal policy using finite horizon policy evaluation
-        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1) 
+        q_policy, value_of_policy, cost1_of_policy, = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1) 
                                                                                                                                                                           
-        return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, q_policy, p.LpStatus[status]
+        return opt_policy, value_of_policy, cost1_of_policy, q_policy, p.LpStatus[status]
                                                                                                                                                                                   
                                                                                                                                                                                   
                                                                                                                                                                                   
@@ -1003,7 +1012,6 @@ class utils:
             l = len(self.ACTIONS[s])
             r_k[s] = np.zeros(l)
             c1_k[s] = np.zeros(l)
-            c2_k[s] = np.zeros(l)
 
             for a in self.ACTIONS[s]:
                 # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
@@ -1096,7 +1104,7 @@ class utils:
         q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
-        return opt_policy, value_of_policy, cost1_of_policy, cost2_of_policy, p.LpStatus[status], q_policy
+        return opt_policy, value_of_policy, cost1_of_policy, p.LpStatus[status], q_policy
 
 
     def compute_extended_LP_random(self,):
@@ -1362,18 +1370,16 @@ class utils:
         return opt_policy, value_of_policy, cost_of_policy, p.LpStatus[status], q_policy
 
     # ++++ Finite Horizon Policy Evaluation ++++
-    def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C1, C2):
+    def FiniteHorizon_Policy_evaluation(self, Px, policy, R, C1):
         
         # results to be returned
         q = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) # q(s,h,a), q_policy, expected cumulative rewards
         v = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # v(s,h), expected cumulative value of the calculated optimal policy
         c1 = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
-        c2 = np.zeros((self.N_STATES, self.EPISODE_LENGTH)) # c(s,h), expected cumulative cost of the calculated optimal policy
 
         P_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_STATES)) # P_policy(s,h,s_1), probability of being in state s_1 at time h+1 given that we are in state s at time h and we follow the optimal policy
         R_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # R_policy(s,h), expected reward of being in state s at time h given that we follow the optimal policy
         C1_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # C_policy(s,h), expected cost of being in state s at time h given that we follow the optimal policy
-        C2_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH)) # C_policy(s,h), expected cost of being in state s at time h given that we follow the optimal policy
 
         # initialize the last state for the value and cost, and q
         for s in range(self.N_STATES):

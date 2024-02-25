@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 def generate_random_patient():
     # generate a random patient
-    context_vec = np.zeros.rand(CONTEXT_VEC_LENGTH) # generate a random context vector
+    context_vec = np.random.rand(CONTEXT_VEC_LENGTH) # generate a random context vector
     context_vec[:4] = np.random.choice([0, 1], 4)
     context_vec[4:] = np.random.choice([0, -1], 4)
     return context_vec
@@ -46,7 +46,7 @@ if os.path.exists(old_filename):
 # Initialize:
 with open('output/model_contextual.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, 
-    INIT_STATE_INDEX, true_theta,
+    INIT_STATE_INDEX, true_theta, d_prob,
     CONSTRAINT, C_b, N_STATES, 
     ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
@@ -54,6 +54,7 @@ STATE_CODE_LENGTH = 1
 Cb = C_b
 N_ACTIONS = N_STATES
 NUMBER_EPISODES = 3e4
+d_prob_sample = d_prob
 
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
@@ -91,11 +92,11 @@ M = 0
 #--------------------------------------------------------------------------------------
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, true_theta,  
+    util_methods = utils(EPS, DELTA, M, P, true_theta, d_prob_sample, 
                         CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, 
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, 
-                         CONSTRAINT, Cb, CONSTRAINT, Cb, use_gurobi) 
+                         CONSTRAINT, Cb, use_gurobi) 
 
     # for empirical estimate of transition probabilities P_hat
     ep_count = np.zeros((N_STATES, N_ACTIONS))
@@ -132,14 +133,14 @@ for sim in range(NUMBER_SIMULATIONS):
         util_methods.setCb(C1b)        
 
         # calculate the R and C based on the true R and C models, regenerate for each episode/patient
-        util_methods.calculate_true_R_C(context_vec)
+        util_methods.calculate_true_R_C(context_vec)        
 
         # get the optimal and baseline policy for current patient with context_vec, and initial state s_idx
-        opt_policy_con, opt_value_LP_con, opt_cost1_LP_con, opt_cost2_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
+        opt_policy_con, opt_value_LP_con, opt_cost1_LP_con, opt_q_con, status = util_methods.compute_opt_LP_Constrained(0, 'Optimal Policy -') 
 
-        util_methods.update_CONSTRAINT(C1b, C2b) # set the C to Cb for calculating the baseline policy
-        pi_b, val_b, cost1_b, cost2_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
-        util_methods.update_CONSTRAINT(CONSTRAINT1, CONSTRAINT2) # reset the C to the original value
+        util_methods.update_CONSTRAINT(C1b) # set the C to Cb for calculating the baseline policy
+        pi_b, val_b, cost1_b, q_b, status = util_methods.compute_opt_LP_Constrained(0, 'Baseline Policy -')
+        util_methods.update_CONSTRAINT(CONSTRAINT1) # reset the C to the original value
 
         util_methods.update_episode(episode) # update the episode number for the utility methods
         
