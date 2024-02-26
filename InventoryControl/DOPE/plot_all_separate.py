@@ -69,10 +69,10 @@ L = 1 # marker point interval
 mark_every_interval = 2000 # marker point interval
 
 fn_list = [
-           '../Contextual/output/CONTEXTUAL_opsrl100.pkl',
-           'output/DOPE_opsrl-in100.pckl', 
-           'output/OptPessLP_opsrl-in100.pckl', 
-           'output/OptCMDP_opsrl-in100.pckl']
+           '../Contextual/output_final/CONTEXTUAL_opsrl100.pkl',
+           'output_final/DOPE_opsrl-in100.pckl', 
+           'output_final/OptPessLP_opsrl-in100.pckl', 
+           'output_final/OptCMDP_opsrl-in100.pckl']
 
 data_list = []
 label_list = [
@@ -134,7 +134,9 @@ axs.legend(loc = 'upper left', prop={'size': 13})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Objective Regret')
 # axs.set_ylim([-0.2e3, 1.2e4])
-plt.savefig("output/Inventory_control_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("Inventory_control_obj_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+# save pdf
+plt.savefig("Inventory_control_obj_regrets.pdf", dpi=300, facecolor='w', edgecolor='w')
 
 
 # plot the second subplot
@@ -157,4 +159,6 @@ axs.ticklabel_format(style='sci', axis='both', scilimits=(0,0))
 axs.legend(loc = 'center right', prop={'size': 13})
 axs.set_xlabel('Episode')
 axs.set_ylabel('Cumulative Constraint Regret')
-plt.savefig("output/Inventory_control_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+plt.savefig("Inventory_control_cons_regrets.png", dpi=300, facecolor='w', edgecolor='w')
+# save pdf
+plt.savefig("Inventory_control_cons_regrets.pdf", dpi=300, facecolor='w', edgecolor='w')

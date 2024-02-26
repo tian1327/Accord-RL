@@ -215,7 +215,7 @@ cd Accord-RL/BPBGClass/Contextual_shuffle
 python plot_all_separate.py 
 ```
 
-2024/02/24 Saturday
+2024/02/24-25 Sat- Sun
 1. Setup the inventory control problem, run DOPE, OptCMDP, OptPessLP
 ```bash
 cd Accord-RL/InventoryControl/DOPE
@@ -229,10 +229,19 @@ python OptCMDP-in.py
 python OptPessLP-in.py
 
 # plots
-python plot_all.py 30000
+python plot_all_separate.py 30000
 ```
 
 2. Run the Contextual algorithm for the inventory control problem
 ```bash
+cd Accord-RL/InventoryControl/Contextual
 
+# setup the model
+python model_contextual.py
+
+# run the algorithm
+python Contextual.py
+
+# plots
+python plot_all_separate.py 30000
 ```
