@@ -262,6 +262,8 @@ for sim in range(NUMBER_SIMULATIONS):
                         min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, 
                         objs, cons1, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
+            objs = []
+            cons = []
 
             filename = 'output/CONTEXTUAL_theta.pkl'
             with open(filename, 'wb') as f:
