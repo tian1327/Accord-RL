@@ -5,7 +5,8 @@ import math
 import sys
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import mean_squared_error
-from model_contextual import cal_d_prob, f, O, h
+from model_contextual import cal_d_prob, f, O, h, calculate_demand
+from pprint import pprint
 
 # define a function!!!
 def get_l2norm_diff(model, model_hat):
@@ -34,7 +35,7 @@ def cal_d_prob_context(context_vec, true_theta):
     return d_prob
 
 class utils:
-    def __init__(self, eps, delta, M, P, true_theta, d_prob_sample,
+    def __init__(self, eps, delta, M, P, true_theta,
                 CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                 INIT_STATE_INDEX, EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS, 
                 CONSTRAINT1, C1b, use_gurobi):
@@ -52,7 +53,6 @@ class utils:
         self.C1 = np.zeros((self.N_STATES, self.N_ACTIONS))
 
         self.true_theta = true_theta
-        self.d_prob_sample = d_prob_sample
         self.CONTEXT_VECTOR = None
         self.d_prob = None # the demand probability distribution given the current context vector and true_theta
 
@@ -61,9 +61,12 @@ class utils:
         self.A = None # observed action vector from frist episode to current episode
         self.sbp_cont = None # observed sbp feedback from frist episode to current episode
         self.cvdrisk = None # observed cvdrisk feedback from frist episode to current episode
+        self.demand = None
 
-        self.cvdrisk_regr = None # regression models for cvdrisk feedback using upto current observations
-        self.sbp_regr = None
+        self.d_regr = None
+        self.learned_theta = np.array([0,0,0,0,0,0,0,0]) 
+        # self.cvdrisk_regr = None 
+        # self.sbp_regr = None
 
         # for connfidence bounds
         self.episode = 0
@@ -75,7 +78,6 @@ class utils:
         self.STATE_CODE_LENGTH = STATE_CODE_LENGTH
         self.ACTION_CODE_LENGTH = ACTION_CODE_LENGTH
         self.U_sbp =  np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for SBP raduis calculation
-        self.U_hba1c = np.zeros((CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for HbA1c raduis calculation
         self.U_cvd = np.zeros((CONTEXT_VEC_LENGTH+STATE_CODE_LENGTH+ACTION_CODE_LENGTH, CONTEXT_VEC_LENGTH+STATE_CODE_LENGTH+ACTION_CODE_LENGTH)) # the design matrix for CVDRisk raduis calculation, 
         self.U_xsa_prod_dict = dict() # trade memory for speed
 
@@ -87,9 +89,7 @@ class utils:
         self.C1b = C1b
         #self.ENV_Q_VALUES = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS))
         
-        self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
-        #self.P_tilde = np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
-        
+        self.P_hat = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))    
         self.R_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.C1_hat = np.zeros((self.N_STATES,self.N_ACTIONS))
         self.Total_emp_reward = np.zeros((self.N_STATES,self.N_ACTIONS))
@@ -98,14 +98,13 @@ class utils:
         #self.C_tilde = np.zeros((self.N_STATES,self.N_ACTIONS))
         
         self.alpha_p = 1.0
-        self.alpha_r = 0.1
-        self.alpha_c1 = 1.0
+        self.alpha_r = 0.001
+        self.alpha_c1 = 0.001
 
         self.NUMBER_OF_OCCURANCES = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.NUMBER_OF_OCCURANCES_p = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         self.beta_prob = {}#np.zeros((self.N_STATES,self.N_ACTIONS,self.N_STATES))
         self.beta_prob_1 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
-        self.beta_prob_2 = {}#np.zeros((self.N_STATES,self.N_ACTIONS))
         self.beta_prob_T = {}
         self.sbp_confidence = {}
         self.cvdrisk_confidence = {}
@@ -136,7 +135,6 @@ class utils:
             # print('s: ', s, 'l: ', l)
             self.NUMBER_OF_OCCURANCES[s] = np.zeros(l) # initialize the number of occurences of [s][a]
             self.beta_prob_1[s] = np.zeros(l)
-            self.beta_prob_2[s] = np.zeros(l)
             self.beta_prob_T[s] = np.zeros(l)
             self.sbp_confidence[s] = np.zeros(l)
             self.cvdrisk_confidence[s] = np.zeros(l)
@@ -191,6 +189,8 @@ class utils:
         ACTIONS_PER_STATE = self.ACTIONS
 
         d_prob = cal_d_prob_context(context_vec, self.true_theta)
+        # print('context_vec: ', context_vec)
+        # pprint(d_prob)
 
         P = {} # dictionary of transition probability matrices
         R = {} # dictionary of reward matrices
@@ -241,11 +241,17 @@ class utils:
         # normalize rewards and costs to be between 0 and 1
         for s in range(N_STATES):
             for a in ACTIONS_PER_STATE[s]:
-                C[s][a] = C[s][a]/c_max
-                R[s][a] = R[s][a]/r_max
+                C[s][a] = C[s][a]/(c_max+1e-6)
+                R[s][a] = R[s][a]/(r_max+1e-6)
         
         self.R = R
         self.C1 = C
+        # print('r_max: ', r_max)
+        # print('c_max: ', c_max)
+        # print('C[0][0]: ', C[0][0])
+        # print('R[0][0]: ', R[0][0])
+        # pprint(R)
+        # pprint(C)
 
 
     def calculate_est_R_C(self,):
@@ -276,7 +282,7 @@ class utils:
                 self.C1_hat[s][a] = cost1
 
 
-    def add_ep_rewards_costs(self, ep_context_vec, ep_state_code, ep_action_code, ep_sbp_cont, ep_hba1c_cont, ep_cvdrisk):
+    def add_ep_rewards_costs(self, ep_context_vec, ep_state_code, ep_action_code, ep_cost, ep_reward, ep_d):
         
         # return if no experience
         if len(ep_action_code) == 0:
@@ -291,7 +297,8 @@ class utils:
         state_vector_list = []
         for i in range(ep_length):
             state_code = ep_state_code[i]
-            state_vector = [int(x) for x in list(state_code)]
+            # state_vector = [int(x) for x in list(state_code)]
+            state_vector = [int(state_code)]
             state_vector_list.append(state_vector)
         
         state_matrix = np.array(state_vector_list)        
@@ -300,14 +307,14 @@ class utils:
         action_vector_list = []
         for i in range(ep_length):
             action_code = ep_action_code[i]
-            action_vector = [int(x) for x in list(action_code)]
+            # action_vector = [int(x) for x in list(action_code)]
+            action_vector = [int(action_code)]
             action_vector_list.append(action_vector)
         
         action_matrix = np.array(action_vector_list)
-        
-        sbp_fb_cont =  np.array(ep_sbp_cont).reshape(-1, 1) # make a column vector
-        hba1c_fb_cont = np.array(ep_hba1c_cont).reshape(-1, 1) # make a column vector
-        cvd = np.array(ep_cvdrisk).reshape(-1, 1) # make a column vector
+        sbp_fb_cont =  np.array(ep_cost).reshape(-1, 1) # make a column vector
+        cvd = np.array(ep_reward).reshape(-1, 1) # make a column vector
+        demand = np.array(ep_d).reshape(-1, 1) # make a column vector
 
         if self.episode == 1: # only 1 episode so far
             
@@ -315,28 +322,17 @@ class utils:
             self.S = state_matrix
             self.A = action_matrix
             self.sbp_cont = sbp_fb_cont
-            self.hba1c_cont = hba1c_fb_cont
-            self.cvdrisk = cvd            
+            self.cvdrisk = cvd
+            self.demand = demand            
 
         else: # stack the new episode to the history
             self.X = np.concatenate((self.X, x_matrix), axis=0)
             self.S = np.concatenate((self.S, state_matrix), axis=0)
             self.A = np.concatenate((self.A, action_matrix), axis=0)
             self.sbp_cont = np.concatenate((self.sbp_cont, sbp_fb_cont), axis=0)
-            self.hba1c_cont = np.concatenate((self.hba1c_cont, hba1c_fb_cont), axis=0)
             self.cvdrisk = np.concatenate((self.cvdrisk, cvd), axis=0)
-            
-        # print('slef.X.shape: ', self.X.shape)
-        # print('self.X: \n', self.X)
-        # print('slef.S.shape: ', self.S.shape)
-        # print('self.S: \n', self.S)
-        # print('slef.A.shape: ', self.A.shape)
-        # print('self.A: \n', self.A)
-        # print('self.sbp_cont.shape: ', self.sbp_cont.shape)
-        # print('self.sbp_cont: \n', self.sbp_cont)
-        # print('self.cvdrisk.shape: ', self.cvdrisk.shape)
-        # print('self.cvdrisk: \n', self.cvdrisk)
-        
+            self.demand = np.concatenate((self.demand, demand), axis=0)
+
 
     def make_x_a_vector(self, context_vec, state_idx, action_idx):
 
@@ -346,16 +342,19 @@ class utils:
         # print("context_vec =", context_vec)
 
         # transform the state to a column vector
-        state_code = self.state_index_to_code[state_idx]
-        state_code_list = [int(x) for x in list(state_code)]
+        # state_code = self.state_index_to_code[state_idx]
+        state_code = state_idx
+        # state_code_list = [int(x) for x in list(state_code)]
+        state_code_list = [int(state_code)]
         state_vec = np.array(state_code_list).reshape(-1, 1)
         # print('state_code =', state_code)
         # print('state_vec =', state_vec)
         # print("state_vec.shape =", state_vec.shape)
 
         # transform the action to a column vector
-        action_code = self.action_index_to_code[action_idx]
-        action_code_list = [int(x) for x in list(action_code)]
+        action_code = action_idx
+        # action_code_list = [int(x) for x in list(action_code)]
+        action_code_list = [int(action_code)]
         action_vec = np.array(action_code_list).reshape(-1, 1)
         # print('action_code =', action_code)
         # print('action_vec =', action_vec)
@@ -383,139 +382,200 @@ class utils:
         # do nothing if no history yet
         if episode == 0:
             return (0, 0, 0)
+
+        # run linear regression to estimatet the theta
+        x_train = self.X
+        y_train = self.demand
+        print('x_train.shape =', x_train.shape)
+        print('y_train.shape =', y_train.shape)
+        d_regr = LinearRegression()
+        d_regr.fit(x_train, y_train)
+        score = d_regr.score(x_train, y_train)
+        print('+++d_regr.score(x_train, y_train) =', score)
+        self.d_regr = d_regr
+
+        # print the weights of the regression model
+        model_weights = self.d_regr.coef_
+        # print('model_weights: ', model_weights)
+        model_intercept = [self.d_regr.intercept_]        
+        # print('model_intercept: ', model_intercept)
         
-        #---------run logistic/linear regression to estimate the CVDRisk feedback, get \theta r
-        x_train = np.concatenate((self.X, self.S, self.A), axis=1)
-        # print('----x_train.shape', x_train.shape)
+        self.learned_theta = model_weights.reshape(-1)
+        est_error = np.linalg.norm(self.learned_theta - self.true_theta)
+        print('est_error: ', est_error)
 
-        # save x_train and self.cvdrisk to pickle file
-        # import pickle
-        # with open('output/x_train.pkl', 'wb') as f:
-        #     pickle.dump(x_train, f)
-        # with open('output/cvdrisk.pkl', 'wb') as f:
-        #     pickle.dump(self.cvdrisk, f)
+        # predict the R_hat and C_hat with the learned theta
+        N_STATES = self.N_STATES
+        ACTIONS_PER_STATE = self.ACTIONS
 
-        # replace the training data here with data used for offline training
-        # x_train = np.load('output/X.npy')
-        # self.cvdrisk = np.load('output/y_true.npy')
-        # print('----x_train.shape', x_train.shape)
+        print('self.CONTEXT_VECTOR: ', self.CONTEXT_VECTOR)
+        print('self.learned_theta: ', self.learned_theta)
+        d_prob = cal_d_prob_context(self.CONTEXT_VECTOR, self.learned_theta)
 
-        y = self.cvdrisk[:, 0] 
-        # transform the y which is self.cvdrisk using -np.log((1-y)/y) 
-        y_train = -np.log((1.0-y)/y) 
+        P = {} # dictionary of transition probability matrices
+        R = {} # dictionary of reward matrices
+        C = {} # dictionary of cost matrices
 
-        # create a linear regression to fit x_train and y_train
-        cvd_regr = LinearRegression()
-        cvd_regr.fit(x_train, y_train)
-        cvd_regr.score(x_train, y_train)
-        # print('+++cvd_regr.score(x_train, y_train) =', cvd_regr.score(x_train, y_train))
+        # calculate the P matrix
+        for s in range(N_STATES):
+            l = len(ACTIONS_PER_STATE[s])
+            R[s] = np.zeros(l)
+            C[s] = np.zeros(l)
+            P[s] = {}
+            for a in ACTIONS_PER_STATE[s]:
+                C[s][a] = O(a) + h(s+a) # cost of taking action a in state s = order cost + holding cost, why is h(s+a) instead of h(s)?
+                P[s][a] = np.zeros(N_STATES) # transition probability matrix
+                for d, prob in d_prob.items(): 
+                    if d < 0: # handle the negative demand
+                        d = 0
+                    s_ = s + a - d # next state
+                    if s_ < 0:
+                        s_ = 0
+                    elif s_ > N_STATES - 1:
+                        s_ = N_STATES - 1 # make sure next state is within bounds [0, N_STATES-1]
+                        
+                    P[s][a][s_] += prob # assign transition probability based on demand probability
+                    
+                R[s][a] = 0
 
-        y_pred = cvd_regr.predict(x_train)
-        y_pred_transformed = 1.0/(1.0+np.exp(-y_pred))
-        mse = mean_squared_error(y, y_pred_transformed)
-        cvd_rmse = np.sqrt(mse)        
-        self.cvdrisk_regr = cvd_regr
-        # print('+++cvd_rmse =', cvd_rmse)
+        # fill in the R matrix
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:        
+                for d, prob in d_prob.items():
+                    s_ = min(max(0, s+a-d), N_STATES-1)
+                    if s + a - d >= 0:
+                        R[s][a] += P[s][a][s_]*f(d) # probability of demand d * revenue from demand d = expected revenue
+                    else:
+                        R[s][a] += 0
+
+        r_max = R[0][0]
+        c_max = C[0][0]
+
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:
+                if C[s][a] > c_max:
+                    c_max = C[s][a]
+                if R[s][a] > r_max:
+                    r_max = R[s][a]
+
+        # normalize rewards and costs to be between 0 and 1
+        for s in range(N_STATES):
+            for a in ACTIONS_PER_STATE[s]:
+                C[s][a] = C[s][a]/(c_max+1e-6)
+                R[s][a] = R[s][a]/(r_max+1e-6)
         
+        self.R_hat = R
+        self.C1_hat = C        
+
+
+        # #---------run logistic/linear regression to estimate the CVDRisk feedback, get \theta r
+        # x_train = np.concatenate((self.X, self.S, self.A), axis=1)
+        # # print('----x_train.shape', x_train.shape)
+
+        # # save x_train and self.cvdrisk to pickle file
+        # # import pickle
+        # # with open('output/x_train.pkl', 'wb') as f:
+        # #     pickle.dump(x_train, f)
+        # # with open('output/cvdrisk.pkl', 'wb') as f:
+        # #     pickle.dump(self.cvdrisk, f)
+
+        # # replace the training data here with data used for offline training
+        # # x_train = np.load('output/X.npy')
+        # # self.cvdrisk = np.load('output/y_true.npy')
+        # # print('----x_train.shape', x_train.shape)
+
+        # y = self.cvdrisk[:, 0] 
+        # # transform the y which is self.cvdrisk using -np.log((1-y)/y) 
+        # y_train = -np.log((1.0-y)/y) 
+
+        # # create a linear regression to fit x_train and y_train
+        # cvd_regr = LinearRegression()
+        # cvd_regr.fit(x_train, y_train)
+        # cvd_regr.score(x_train, y_train)
+        # # print('+++cvd_regr.score(x_train, y_train) =', cvd_regr.score(x_train, y_train))
+
+        # y_pred = cvd_regr.predict(x_train)
+        # y_pred_transformed = 1.0/(1.0+np.exp(-y_pred))
+        # mse = mean_squared_error(y, y_pred_transformed)
+        # cvd_rmse = np.sqrt(mse)        
+        # self.cvdrisk_regr = cvd_regr
 
         #---------run linear regression to estimate the deviation from the SBP_feedback, get \theta c
+        # x_train = np.concatenate((self.X, self.A), axis=1)
+        # # print('---sbp x_train.shape', x_train.shape)
+        # y_train = self.sbp_cont[:, 0]
+        # # print('---sbp y_train.shape', y_train.shape)
 
-        x_train = np.concatenate((self.X, self.A), axis=1)
-        # print('---sbp x_train.shape', x_train.shape)
-        y_train = self.sbp_cont[:, 0]
-        # print('---sbp y_train.shape', y_train.shape)
+        # # x_train = np.load('output/X_sbp.npy')
+        # # print('---sbp x_train.shape', x_train.shape)
+        # # y_train = np.load('output/y_sbp.npy')
+        # # print('---sbp y_train.shape', y_train.shape)
 
-        # x_train = np.load('output/X_sbp.npy')
-        # print('---sbp x_train.shape', x_train.shape)
-        # y_train = np.load('output/y_sbp.npy')
-        # print('---sbp y_train.shape', y_train.shape)
-
-        # create a linear regression to fit x_train and y_train
-        sbp_regr = LinearRegression()
-        sbp_regr.fit(x_train, y_train)
-        sbp_regr.score(x_train, y_train)
-        # print('+++sbp_regr.score(x_train, y_train) =', sbp_regr.score(x_train, y_train))
-        y_pred = sbp_regr.predict(x_train)
-        mse = mean_squared_error(y_train, y_pred)
-        sbp_rmse = np.sqrt(mse)
-        # print('+++SBP RMSE = ', sbp_rmse)
-        self.sbp_regr = sbp_regr
-
-        #---------run linear regression to estimate the deviation from the hba1c_feedback, get \theta c
-
-        x_train = np.concatenate((self.X, self.A), axis=1)
-        y_train = self.hba1c_cont[:, 0]
-
-        # create a linear regression to fit x_train and y_train
-        hba1c_regr = LinearRegression()
-        hba1c_regr.fit(x_train, y_train)
-        hba1c_regr.score(x_train, y_train)
-
-        y_pred = hba1c_regr.predict(x_train)
-        mse = mean_squared_error(y_train, y_pred)
-        hba1c_rmse = np.sqrt(mse)
-
-        self.hba1c_regr = hba1c_regr
+        # # create a linear regression to fit x_train and y_train
+        # sbp_regr = LinearRegression()
+        # sbp_regr.fit(x_train, y_train)
+        # sbp_regr.score(x_train, y_train)
+        # # print('+++sbp_regr.score(x_train, y_train) =', sbp_regr.score(x_train, y_train))
+        # y_pred = sbp_regr.predict(x_train)
+        # mse = mean_squared_error(y_train, y_pred)
+        # sbp_rmse = np.sqrt(mse)
+        # # print('+++SBP RMSE = ', sbp_rmse)
+        # self.sbp_regr = sbp_regr
 
         #------------ calculate the l2norm of the difference between the weights of true model and estimated model
+        # # get the weights of self.R_model, which is a linear regression model
+        # R_model_weights = list(self.R_model.coef_)
+        # # print('R_model_weights: ', R_model_weights)
+        # R_model_intercept = [self.R_model.intercept_]
+        # # print('+++R_model_intercept: ', R_model_intercept)
+        # R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
+        # # print('+++R_model_wt_vec: ', R_model_wt_vec)
+        # #print('type(R_model_wt_vec): ', type(R_model_wt_vec))
         
-        # get the weights of self.R_model, which is a linear regression model
-        R_model_weights = list(self.R_model.coef_)
-        # print('R_model_weights: ', R_model_weights)
-        R_model_intercept = [self.R_model.intercept_]
-        # print('+++R_model_intercept: ', R_model_intercept)
-        R_model_wt_vec = np.array(R_model_weights + R_model_intercept)
-        # print('+++R_model_wt_vec: ', R_model_wt_vec)
-        #print('type(R_model_wt_vec): ', type(R_model_wt_vec))
-        
-        # get the weights of self.cvdrisk_regr, which is a linear regression model
-        R_hat_weights = self.cvdrisk_regr.coef_.tolist()
-        # print('+++R_hat_weights: ', R_hat_weights)
-        #print('type(R_hat_weights): ', type(R_hat_weights))
-        R_hat_intercept = [self.cvdrisk_regr.intercept_]
-        # print('+++R_hat_intercept: ', R_hat_intercept)
-        #print('type(R_hat_intercept): ', type(R_hat_intercept))
-        R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
-        # print('+++R_hat_wt_vec: ', R_hat_wt_vec)
-        #print('type(R_hat_wt_vec): ', type(R_hat_wt_vec))
+        # # get the weights of self.cvdrisk_regr, which is a linear regression model
+        # R_hat_weights = self.cvdrisk_regr.coef_.tolist()
+        # # print('+++R_hat_weights: ', R_hat_weights)
+        # #print('type(R_hat_weights): ', type(R_hat_weights))
+        # R_hat_intercept = [self.cvdrisk_regr.intercept_]
+        # # print('+++R_hat_intercept: ', R_hat_intercept)
+        # #print('type(R_hat_intercept): ', type(R_hat_intercept))
+        # R_hat_wt_vec = np.array(R_hat_weights + R_hat_intercept)
+        # # print('+++R_hat_wt_vec: ', R_hat_wt_vec)
+        # #print('type(R_hat_wt_vec): ', type(R_hat_wt_vec))
 
-        # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
-        R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
-        
-        C1_est_error = get_l2norm_diff(self.C1_model, self.sbp_regr)
+        # # get the l2 norm of the difference between R_model_wt_vec and R_hat_wt_vec
+        # R_est_error = np.linalg.norm(R_model_wt_vec - R_hat_wt_vec)
+
+        # # C1_est_error = get_l2norm_diff(self.C1_model, self.sbp_regr)
 
         #----------- use the cvd_regr to predict the cvdrisk and sbp_feedback for the whole state-action space, that's the self.R_hat and self.C_hat
-        for s in range(self.N_STATES):
-            for a in self.ACTIONS[s]:
-                state_code = self.state_index_to_code[s]
-                action_code = self.action_index_to_code[a]
+        # for s in range(self.N_STATES):
+        #     for a in self.ACTIONS[s]:
+        #         state_code = self.state_index_to_code[s]
+        #         action_code = self.action_index_to_code[a]
 
-                # convert state and action code digit by digit to a list of 0 and 1
-                state_code_list = [int(x) for x in list(state_code)]
-                action_code_list = [int(x) for x in list(action_code)]
-                # concatenate state and action code to the back of context vector
-                R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
-                # print('R_input: ', R_input)
-                # print('R_input.shape: ', R_input.shape)
+        #         # convert state and action code digit by digit to a list of 0 and 1
+        #         state_code_list = [int(x) for x in list(state_code)]
+        #         action_code_list = [int(x) for x in list(action_code)]
+        #         # concatenate state and action code to the back of context vector
+        #         R_input = np.concatenate((self.CONTEXT_VECTOR, np.array(state_code_list), np.array(action_code_list)), axis=0)
+        #         # print('R_input: ', R_input)
+        #         # print('R_input.shape: ', R_input.shape)
 
-                y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
-                #print('y_pred: ', y_pred)
+        #         y_pred = self.cvdrisk_regr.predict(R_input.reshape(1, -1))[0]
+        #         #print('y_pred: ', y_pred)
 
-                reward = 1/(1+np.exp(-y_pred))
-                #print('reward: ', reward)
+        #         reward = 1/(1+np.exp(-y_pred))
+        #         #print('reward: ', reward)
 
-                self.R_hat[s][a] = reward
+        #         self.R_hat[s][a] = reward
 
-                C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
-                cost1 = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
-                cost2 = self.hba1c_regr.predict(C_input.reshape(1, -1))[0]
-                self.C1_hat[s][a] = cost1
-                # print('cost: ', cost)
-                # print('cost.shape: ', cost.shape)
-                # print('s: ', s, 'a: ', a, 'reward: ', reward, 'cost: ', self.C[s][a])
-                # stop        
+        #         C_input = np.concatenate((self.CONTEXT_VECTOR, np.array(action_code_list)), axis=0)
+        #         cost1 = self.sbp_regr.predict(C_input.reshape(1, -1))[0]
+        #         cost2 = self.hba1c_regr.predict(C_input.reshape(1, -1))[0]
+        #         self.C1_hat[s][a] = cost1   
 
-        return (R_est_error, C1_est_error, C2_est_error)
+        return est_error
 
 
     def add_design_vector(self, xa_vec):
@@ -530,8 +590,8 @@ class utils:
         
         # add the new product to the existing U_sbp
         self.U_sbp = self.U_sbp + product
-        self.U_hba1c = self.U_hba1c + product
-        # print('self.U_sbp.shape: ', self.U_sbp.shape)
+        # self.U_hba1c = self.U_hba1c + product
+        # # print('self.U_sbp.shape: ', self.U_sbp.shape)
 
         #------- for self.U_cvd, not doing here for each timestep, because we don't have estimated regression model for the first k0 episode
         # instead we do this in the compute_confidence_interval function
@@ -543,31 +603,28 @@ class utils:
     def step(self, s, a, h, add_noises=True):  # take a step in the environment
         # h is not used here
 
-        probs = np.zeros((self.N_STATES))
-        for next_s in range(self.N_STATES):
-            probs[next_s] = self.P[s][a][next_s]
-        next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
+        # probs = np.zeros((self.N_STATES))
+        # for next_s in range(self.N_STATES):
+        #     probs[next_s] = self.P[s][a][next_s]
+        # next_state = int(np.random.choice(np.arange(self.N_STATES),1,replace=True,p=probs)) # find next_state based on the transition probabilities
 
-        # add some noise to the reward and cost
-        # rew = self.R[s][a] + np.random.normal(0, 0.1) # CVDRisk_feedback
+        N_STATES = self.N_STATES
+        d = calculate_demand(self.CONTEXT_VECTOR, self.true_theta)
+        d = int(d)
+        # print('generated demand: ', d)
+        if d < 0: # handle the negative demand
+            d = 0
+        s_ = s + a - d # next state
+        if s_ < 0:
+            s_ = 0
+        elif s_ > N_STATES - 1:
+            s_ = N_STATES - 1 # make sure next state is within bounds [0, N_STATES-1]
+        next_state = s_
 
-        y_pred = self.R_y_pred[s][a]
-        if add_noises:
-            noise = np.random.normal(0, 0.05)
-        else:
-            noise = 0
-        obs_reward = 1.0 /(1.0+np.exp(-y_pred + noise)) # with noises added
-        rew = obs_reward
-        # print('y_pred: ', y_pred, 'noise: ', noise, 'obs_reward: ', obs_reward)
-        # print('s: ', s, 'a: ', a, 'rew: ', rew, 'self.R[s][a]: ', self.R[s][a])
-        # print('self.R[s][a]: ', self.R[s][a])
+        rew = self.R[s][a]
+        cost1 = self.C1[s][a]
 
-        if add_noises:
-            cost1 = self.C1[s][a] + np.random.normal(0, 5) # this is the sbp feedback, not the deviation
-        else:
-            cost1 = self.C1[s][a]
-
-        return next_state, rew, cost1
+        return next_state, rew, cost1, d
 
 
     def update_mu(self, init_state):
@@ -611,102 +668,77 @@ class utils:
     def compute_confidence_intervals_BPBG(self, L): 
 
         if self.episode == 0:
-            return -1, -1, -1
+            return 0, 0
 
-        # ----------------- get U_cvd_inverse -----------------
-        # reset the self.U_cvd
-        self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)) # here we assume the context vector is of length 1 !!!, For BPBG, this is 2
+        # # ----------------- get U_cvd_inverse -----------------
+        # # reset the self.U_cvd
+        # self.U_cvd = np.zeros((self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH, self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)) # here we assume the context vector is of length 1 !!!, For BPBG, this is 2
 
-        XSA = np.concatenate((self.X, self.S, self.A), axis=1)
-        # print('XSA.shape: ', XSA.shape)
+        # XSA = np.concatenate((self.X, self.S, self.A), axis=1)
+        # # print('XSA.shape: ', XSA.shape)
 
-        Y_pred = self.cvdrisk_regr.predict(XSA)
-        # print('Y_pred.shape: ', Y_pred.shape)
-        y_pred = 1.0/(1.0+np.exp(-Y_pred))
+        # Y_pred = self.cvdrisk_regr.predict(XSA)
+        # # print('Y_pred.shape: ', Y_pred.shape)
+        # y_pred = 1.0/(1.0+np.exp(-Y_pred))
 
-        for i in range(self.X.shape[0]):
+        # for i in range(self.X.shape[0]):
 
-            if i in self.U_xsa_prod_dict:
-                prod = self.U_xsa_prod_dict[i]
-            else:
-                xsa_vec = XSA[i].reshape(-1, 1)
-                prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
-                self.U_xsa_prod_dict[i] = prod
+        #     if i in self.U_xsa_prod_dict:
+        #         prod = self.U_xsa_prod_dict[i]
+        #     else:
+        #         xsa_vec = XSA[i].reshape(-1, 1)
+        #         prod = np.matmul(xsa_vec, np.transpose(xsa_vec))
+        #         self.U_xsa_prod_dict[i] = prod
 
-            factor = y_pred[i]
+        #     factor = y_pred[i]
 
-            u_cvd = prod * factor**2 * (1.0-factor)**2
-            self.U_cvd = self.U_cvd + u_cvd
+        #     u_cvd = prod * factor**2 * (1.0-factor)**2
+        #     self.U_cvd = self.U_cvd + u_cvd
         
+        # # add an identy matrix to self.U_cvd if cannot be inverted
+        # try:
+        #     U_cvd_inverse = np.linalg.inv(self.U_cvd)
+        #     eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+        #     min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+        #     # print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)    
 
-        # add an identy matrix to self.U_cvd if cannot be inverted
-        try:
-            U_cvd_inverse = np.linalg.inv(self.U_cvd)
+        # except:
+        #     print('cannot invert U_cvd, add an identity matrix to it')
+        #     eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+        #     min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+        #     # print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
 
-            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            # print("Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)    
+        #     self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)
+        #     U_cvd_inverse = np.linalg.inv(self.U_cvd)
 
-        except:
-            print('cannot invert U_cvd, add an identity matrix to it')
-            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            # print("Before adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)
+        #     eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
+        #     min_eigenvalue_cvd = np.min(eigenvalues_cvd)
+        #     # print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
 
-            self.U_cvd = self.U_cvd + np.identity(self.CONTEXT_VEC_LENGTH+self.STATE_CODE_LENGTH+self.ACTION_CODE_LENGTH)
-            U_cvd_inverse = np.linalg.inv(self.U_cvd)
+        # # calculate the end_term 4 *hr/sqrt(t)
+        # hr = self.param_2 * np.sqrt(9+1+4)
+        # end_term = 4 * hr / np.sqrt(self.episode)
+        # # print('end_term: ', end_term) # 4
 
-            eigenvalues_cvd = np.linalg.eigvals(self.U_cvd)
-            min_eigenvalue_cvd = np.min(eigenvalues_cvd)
-            # print("After adding Identity Matrix - Minimum eigenvalue of U_cvd:", min_eigenvalue_cvd)            
+        # # ----------------- get U_sbp_inverse -----------------
+        # # add an identy matrix to self.U_sbp if cannot be inverted
+        # try:
+        #     U_sbp_inverse = np.linalg.inv(self.U_sbp)
+        #     eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+        #     min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+        #     # print("Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)                    
+        # except:
+        #     print('cannot invert U_sbp, add an identity matrix to it')
+        #     eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+        #     min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+        #     # print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)   
 
-        # calculate the end_term 4 *hr/sqrt(t)
-        hr = self.param_2 * np.sqrt(9+1+4)
-        end_term = 4 * hr / np.sqrt(self.episode)
-        # print('end_term: ', end_term) # 4
+        #     self.U_sbp = self.U_sbp + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
+        #     U_sbp_inverse = np.linalg.inv(self.U_sbp)
 
-        # ----------------- get U_sbp_inverse -----------------
-
-        # add an identy matrix to self.U_sbp if cannot be inverted
-        try:
-            U_sbp_inverse = np.linalg.inv(self.U_sbp)
-            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            # print("Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)                    
-        except:
-            print('cannot invert U_sbp, add an identity matrix to it')
-            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            # print("Before adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)   
-
-            self.U_sbp = self.U_sbp + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
-            U_sbp_inverse = np.linalg.inv(self.U_sbp)
-
-            eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
-            min_eigenvalue_sbp = np.min(eigenvalues_sbp)
-            # print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
-
-
-        # ----------------- get U_hba1c_inverse -----------------
-
-        # add an identy matrix to self.U_hba1c if cannot be inverted
-        try:
-            U_hba1c_inverse = np.linalg.inv(self.U_hba1c)
-            eigenvalues_hba1c = np.linalg.eigvals(self.U_hba1c)
-            min_eigenvalue_hba1c = np.min(eigenvalues_hba1c)
-                  
-        except:
-            print('cannot invert U_hba1c, add an identity matrix to it')
-            eigenvalues_hba1c = np.linalg.eigvals(self.U_hba1c)
-            min_eigenvalue_hba1c = np.min(eigenvalues_hba1c) 
-
-            self.U_hba1c = self.U_hba1c + np.identity(self.CONTEXT_VEC_LENGTH+self.ACTION_CODE_LENGTH)
-            U_hba1c_inverse = np.linalg.inv(self.U_hba1c)
-
-            eigenvalues_hba1c = np.linalg.eigvals(self.U_hba1c)
-            min_eigenvalue_hba1c = np.min(eigenvalues_hba1c)
-            # print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
-    
+        #     eigenvalues_sbp = np.linalg.eigvals(self.U_sbp)
+        #     min_eigenvalue_sbp = np.min(eigenvalues_sbp)
+        #     # print("After adding Identity Matrix - Minimum eigenvalue of U_sbp:", min_eigenvalue_sbp)
 
         for s in range(self.N_STATES):
             for a in self.ACTIONS[s]:
@@ -719,37 +751,45 @@ class utils:
                         self.beta_prob[s][a,s_1] = min(2*np.sqrt(L*self.P_hat[s][a][s_1]*(1-self.P_hat[s][a][s_1])/max(self.NUMBER_OF_OCCURANCES[s][a],1)) + 
                                                             14*L/(3*max(self.NUMBER_OF_OCCURANCES[s][a],1)), 1)                            
                         # print('self.beta_prob[s][a,s_1]: ', self.beta_prob[s][a,s_1])
+                
+                # self.sbp_confidence[s][a] = self.param_c1*sum(self.beta_prob[s][a,:])
+                # self.cvdrisk_confidence[s][a] = self.param_r*sum(self.beta_prob[s][a,:])
 
-                #---------- compute the confidence intervals for the hba1c_feedback
-                xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, s, a)
+                self.sbp_confidence[s][a] = self.param_c1
+                self.cvdrisk_confidence[s][a] = self.param_r       
 
-                xa_transpose = np.transpose(xa_vec)
+                # #---------- compute the confidence intervals for the hba1c_feedback
+                # xa_vec, xsa_vec = self.make_x_a_vector(self.CONTEXT_VECTOR, s, a)
+
+                # xa_transpose = np.transpose(xa_vec)
                
-                prod = np.matmul(xa_transpose, U_hba1c_inverse)
-                prod = np.matmul(prod, xa_vec)
+                # prod = np.matmul(xa_transpose, U_hba1c_inverse)
+                # prod = np.matmul(prod, xa_vec)
 
-                # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.sbp_confidence[s][a] = self.param_c1 * np.log(self.episode) * np.sqrt(prod)
+                # # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
+                # self.sbp_confidence[s][a] = self.param_c1 * np.log(self.episode) * np.sqrt(prod)
 
-                #---------- compute the confidence intervals for the CVDRisk_feedback
-                xsa_vec.reshape(1, -1)
-                # print('xsa_vec.shape: ', xsa_vec.shape)
-                # print('xsa_vec: ', xsa_vec)
-                y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0]
-                # print('y_pred: ', y_pred)
-                factor = 1.0/(1.0+np.exp(-y_pred))
-                # print('factor: ', factor)
-                xsa = xsa_vec * factor**2 * (1-factor)**2
-                xsa_transpose = np.transpose(xsa)
-                prod = np.matmul(xsa_transpose, U_cvd_inverse)
-                prod = np.matmul(prod, xsa_vec)
-                # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
-                self.cvdrisk_confidence[s][a] = self.param_r * np.log(self.episode) * np.sqrt(prod) + end_term
-                # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
+                # #---------- compute the confidence intervals for the CVDRisk_feedback
+                # xsa_vec.reshape(1, -1)
+                # # print('xsa_vec.shape: ', xsa_vec.shape)
+                # # print('xsa_vec: ', xsa_vec)
+                # y_pred = self.cvdrisk_regr.predict(xsa_vec.reshape(1, -1))[0]
+                # # print('y_pred: ', y_pred)
+                # factor = 1.0/(1.0+np.exp(-y_pred))
+                # # print('factor: ', factor)
+                # xsa = xsa_vec * factor**2 * (1-factor)**2
+                # xsa_transpose = np.transpose(xsa)
+                # prod = np.matmul(xsa_transpose, U_cvd_inverse)
+                # prod = np.matmul(prod, xsa_vec)
+                # # print('prod: ', prod, 'sqrt(prod): ', np.sqrt(prod))
+                # self.cvdrisk_confidence[s][a] = self.param_r * np.log(self.episode) * np.sqrt(prod) + end_term
+                # # print('self.cvdrisk_confidence[s][a]: ', self.cvdrisk_confidence[s][a])
         
         # print('self.cvdrisk_confidence[1][1]: ', self.cvdrisk_confidence[1][1])
 
-        return min_eigenvalue_cvd, min_eigenvalue_sbp, min_eigenvalue_hba1c
+        # return min_eigenvalue_cvd, min_eigenvalue_sbp
+        return 0, 0
+
 
 
 
@@ -883,7 +923,7 @@ class utils:
         # print("\nComputing optimal policy with constrained LP solver ...")
 
         opt_policy = np.zeros((self.N_STATES,self.EPISODE_LENGTH,self.N_ACTIONS)) #[s, h, a]
-        opt_prob = p.LpProblem("OPT_LP_problem",p.LpMinimize) # minimize the CVRisk
+        opt_prob = p.LpProblem("OPT_LP_problem", p.LpMaximize) # here we need to maximize the objective function
         opt_q = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS)) #[h, s, a]
                                                                                   
         # create problem variables
@@ -918,11 +958,16 @@ class utils:
             status = opt_prob.solve(p.PULP_CBC_CMD(gapRel=0.001, msg = 0)) # solve the constrained LP problem
 
 
-        #print(status)
-        #print(p.LpStatus[status])   # The solution status
+        # print(f'status: {status}')
+        # print(f'p.LpStatus[status]: {p.LpStatus[status]}')
         if p.LpStatus[status] != 'Optimal':
             print("No optimal solution found!")
-            return None, 0, 0, 0, 0, p.LpStatus[status]
+            return None, 0, 0, 0, p.LpStatus[status]
+        
+        if p.value(opt_prob.objective) == None:
+            print('opt_prob.objective is None')
+            return None, 0, 0, 0, 'NoneSolution'
+
 
         #print(opt_prob)
         # print("printing best value constrained:", p.value(opt_prob.objective))
@@ -966,7 +1011,7 @@ class utils:
                     
                 # con_policy  += opt_q[h,s,a]*self.C[s][a]
                 # con_policy  += opt_q[h,s,a]*(max(0, 110-self.C[s][a]) + max(0, self.C[s][a]-125)) # since the cost here is the SBP feedback
-                con1_policy  += opt_q[h,s,a]*(self.C[s][a]) # since the cost here is the SBP feedback
+                con1_policy  += opt_q[h,s,a]*(self.C1[s][a]) # since the cost here is the SBP feedback
 
                 val_policy += opt_q[h,s,a]*self.R[s][a]
 
@@ -997,7 +1042,7 @@ class utils:
         """
 
         opt_policy = np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)) #[s,h,a]
-        opt_prob = p.LpProblem("OPT_LP_problem", p.LpMinimize) # minimize the expected cumulative CVDRisk
+        opt_prob = p.LpProblem("OPT_LP_problem", p.LpMaximize)
         opt_z = np.zeros((self.EPISODE_LENGTH, self.N_STATES, self.N_ACTIONS, self.N_STATES)) # [h,s,a,s_], decision variable, state-action-state occupancy measure
         #create problem variables
         
@@ -1016,8 +1061,8 @@ class utils:
             for a in self.ACTIONS[s]:
                 # r_k[s][a] = self.R_hat[s][a] - self.sbp_cvdrisk_confidence[s][a] # no need to times the self.episode_length since self.sbp_cvdrisk_confidence[s][a] is not visit dependent
                 r_k[s][a] = max(0, self.R_hat[s][a] - self.alpha_r * self.cvdrisk_confidence[s][a])
-
-                c1_k[s][a] = max(0, 110-(self.C1_hat[s][a] - self.alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]) - 125)
+                c1_k[s][a] = max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]))
+                # c1_k[s][a] = max(0, 110-(self.C1_hat[s][a] - self.alpha_c1 * self.sbp_confidence[s][a])) + max(0, (self.C1_hat[s][a] + self.alpha_c1 * self.sbp_confidence[s][a]) - 125)
 
         # objective function
         # equation (18a) in the paper
@@ -1059,9 +1104,9 @@ class utils:
 
                                                                                                                                                                                                                                       
         if p.LpStatus[status] != 'Optimal':
-            # print(p.LpStatus[status])
-            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS))
-                                                                                                                                                                                                                                                  
+            print(p.LpStatus[status])
+            return np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), np.zeros((self.N_STATES, self.EPISODE_LENGTH)), p.LpStatus[status], np.zeros((self.N_STATES, self.EPISODE_LENGTH, self.N_ACTIONS))
+                                                                                                                                                                                                                                                    
         for h in range(self.EPISODE_LENGTH):
             for s in range(self.N_STATES):
                 for a in self.ACTIONS[s]:
@@ -1101,7 +1146,7 @@ class utils:
                     for a in self.ACTIONS[s]:
                         opt_policy[s,h,a] = opt_policy[s,h,a]/sum_prob # normalize the policy to make sure the sum of the probabilities is 1
 
-        q_policy, value_of_policy, cost1_of_policy, cost2_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1)
+        q_policy, value_of_policy, cost1_of_policy = self.FiniteHorizon_Policy_evaluation(self.P, opt_policy, self.R, self.C1)
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                   
         return opt_policy, value_of_policy, cost1_of_policy, p.LpStatus[status], q_policy
@@ -1387,7 +1432,8 @@ class utils:
             for a in self.ACTIONS[s]:
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]*C[s][a] # expected cost of the last state
                 # x += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110-C[s][a]) + max(0, C[s][a]-125)) 
-                x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp                
+                # x1 += policy[s, self.EPISODE_LENGTH - 1, a]* (max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp
+                x1 += policy[s, self.EPISODE_LENGTH - 1, a]*C1[s][a] # expected cost of the last state                
 
             c1[s, self.EPISODE_LENGTH-1] = x1 #np.dot(policy[s,self.EPISODE_LENGTH-1,:], self.C[s])
 
@@ -1404,7 +1450,8 @@ class utils:
                     x += policy[s,h,a]*R[s][a]
                     # y += policy[s,h,a]*C[s][a]
                     # y += policy[s,h,a]*(max(0, 110-C[s][a]) + max(0, C[s][a]-125))
-                    y1 += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp deviation
+                    # y1 += policy[s,h,a]*(max(0, 110.0-C1[s][a]) + max(0, C1[s][a]-125.0) ) # sbp deviation
+                    y1 += policy[s,h,a]*C1[s][a]
 
                 R_policy[s,h] = x # expected reward of the state s at time h under the policy
                 C1_policy[s,h] = y1 # expected cost of the state s at time h under the policy

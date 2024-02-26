@@ -331,6 +331,7 @@ class utils:
 
         # objective function
         # why not adding the confidence bound to the objective function? as shown in equation (18a) in the papers
+        # the original DOPE code's implementation is wrong, should not use the true R and C here, but R_hat and C_hat
         opt_prob += p.lpSum([z[(h,s,a,s_1)]*self.R[s][a] for h in range(self.EPISODE_LENGTH) for s in range(self.N_STATES) for a in self.ACTIONS[s] for s_1 in self.Psparse[s][a]])
 
         #Constraints equation 18(b)                                   # why plus sign here, not minus sign?

@@ -13,20 +13,14 @@ from tqdm import tqdm
 import pprint as pp
 import os
 
-
-# np.random.seed(0)
-def get_noise(n=10):
-    for i in range(n):
-        noise = np.random.choice([-2, -1, 0, 1, 2], 1)
-        print(noise)
-
-# get_noise()
 # stop
 # state space, actions available in each state vary with state
 
 # calculate the demand d as a dot product of X and true_theta + noise
 def calculate_demand(X, theta):
-    return np.dot(X, theta) + np.random.choice([-2, -1, 0, 1, 2], 1)
+    # return np.dot(X, theta) + np.random.choice([-2, -1, 0, 1, 2], 1)
+    return np.dot(X, theta) + np.random.choice([0, 1], 1)
+
 
 def cal_d_prob(X, true_theta):
     
@@ -39,7 +33,7 @@ def cal_d_prob(X, true_theta):
 
     # print(d_list[:20])
     d_set = set(d_list)
-    print(f'd_set: {d_set}')
+    # print(f'd_set: {d_set}')
 
     # calculate the occurance of demand d
     d_prob = {}
@@ -142,21 +136,21 @@ if __name__ == '__main__':
     r_max = R[0][0]
     c_max = C[0][0]
 
-    # for s in range(N_STATES):
-    #     for a in ACTIONS_PER_STATE[s]:
-    #         if C[s][a] > c_max:
-    #             c_max = C[s][a]
-    #         if R[s][a] > r_max:
-    #             r_max = R[s][a]
+    for s in range(N_STATES):
+        for a in ACTIONS_PER_STATE[s]:
+            if C[s][a] > c_max:
+                c_max = C[s][a]
+            if R[s][a] > r_max:
+                r_max = R[s][a]
 
-    # print("r_max =", r_max)
-    # print("c_max =", c_max)
+    print("r_max =", r_max)
+    print("c_max =", c_max)
 
-    # # normalize rewards and costs to be between 0 and 1
-    # for s in range(N_STATES):
-    #     for a in ACTIONS_PER_STATE[s]:
-    #         C[s][a] = C[s][a]/c_max
-    #         R[s][a] = R[s][a]/r_max
+    # normalize rewards and costs to be between 0 and 1
+    for s in range(N_STATES):
+        for a in ACTIONS_PER_STATE[s]:
+            C[s][a] = C[s][a]/c_max
+            R[s][a] = R[s][a]/r_max
 
     EPISODE_LENGTH = 7
     CONSTRAINT = EPISODE_LENGTH/2
@@ -178,7 +172,7 @@ if __name__ == '__main__':
     print('ACTION_CODE_LENGTH =', ACTION_CODE_LENGTH)
 
     with open('output/model_contextual.pkl', 'wb') as f:
-        pickle.dump([P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, true_theta, d_prob,
+        pickle.dump([P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, INIT_STATE_INDEX, true_theta, 
                     CONSTRAINT, C_b, N_STATES, ACTIONS_PER_STATE, EPISODE_LENGTH, delta], f)
 
     # # constrained and unconstrained optimal solution

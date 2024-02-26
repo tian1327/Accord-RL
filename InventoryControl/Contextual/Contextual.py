@@ -46,7 +46,7 @@ if os.path.exists(old_filename):
 # Initialize:
 with open('output/model_contextual.pkl', 'rb') as f:
     [P, CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, 
-    INIT_STATE_INDEX, true_theta, d_prob,
+    INIT_STATE_INDEX, true_theta,
     CONSTRAINT, C_b, N_STATES, 
     ACTIONS_PER_STATE, EPISODE_LENGTH, DELTA] = pickle.load(f)
 
@@ -54,7 +54,7 @@ STATE_CODE_LENGTH = 1
 Cb = C_b
 N_ACTIONS = N_STATES
 NUMBER_EPISODES = 3e4
-d_prob_sample = d_prob
+CONSTRAINT = 7
 
 print("CONSTRAINT =", CONSTRAINT)
 print("Cb =", Cb)
@@ -64,8 +64,8 @@ print("N_ACTIONS =", N_ACTIONS)
 
 # define k0
 K0 = alpha_k * (EPISODE_LENGTH/(Cb-CONSTRAINT))**2  
-K0 = -1 # no baseline
-#K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
+K0 = -1 
+# K0 = 100 # warm up episodes for infeasible solution in extended LP with cold start
 
 print()
 print("alpha_k =", alpha_k)
@@ -92,7 +92,7 @@ M = 0
 #--------------------------------------------------------------------------------------
 for sim in range(NUMBER_SIMULATIONS):
 
-    util_methods = utils(EPS, DELTA, M, P, true_theta, d_prob_sample, 
+    util_methods = utils(EPS, DELTA, M, P, true_theta, 
                         CONTEXT_VEC_LENGTH, ACTION_CODE_LENGTH, STATE_CODE_LENGTH,
                          INIT_STATE_INDEX, 
                          EPISODE_LENGTH, N_STATES, N_ACTIONS, ACTIONS_PER_STATE, 
@@ -104,10 +104,11 @@ for sim in range(NUMBER_SIMULATIONS):
 
     # for linear regression of the coefficients
     ep_context_vec = None
-    ep_cost = [] # record the SBP feedback continuous for each step in a episode
+    ep_cost = [] 
     ep_state_code = []
     ep_action_code = [] # record the action code for each step in a episode
-    ep_reward = [] # record the CVDRisk for each step in a episode
+    ep_reward = [] 
+    ep_d = []
 
     objs = [] # objective regret for current run
     cons1 = []
@@ -156,32 +157,31 @@ for sim in range(NUMBER_SIMULATIONS):
 
             util_methods.setCounts(ep_count_p, ep_count) # add the counts to the utility methods counter
             util_methods.update_empirical_model(0) # update the transition probabilities P_hat based on the counter
-            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_cost, ep_hba1c_cont, ep_reward) # add the collected SBP and action index to the history data for regression
-            R_est_error, C1_est_error = 0, 0 
-            min_eign_cvd, min_eign_sbp, min_eign_hba1c = 0, 0, 0
+            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_cost, ep_reward, ep_d) # add the collected SBP and action index to the history data for regression
+            est_error = 0
+            min_eign_cvd, min_eign_sbp = 0, 0
             dtime = 0
 
         else: # when the episode is greater than K0, solve the extended LP to get the policy
             t1 = time.time() 
             util_methods.setCounts(ep_count_p, ep_count)
             util_methods.update_empirical_model(0) # here we only update the transition probabilities P_hat after finishing 1 full episode
-            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_cost, ep_hba1c_cont, ep_reward) # add the collected SBP and action index to the history data for regression
-            R_est_error, C1_est_error, C2_est_error = util_methods.run_regression_rewards_costs_BPBG(episode) # update the regression models for SBP/Hba1c and CVDRisk
-            min_eign_cvd, min_eign_sbp, min_eign_hba1c = util_methods.compute_confidence_intervals_BPBG(L)
+            util_methods.add_ep_rewards_costs(ep_context_vec, ep_state_code, ep_action_code, ep_cost, ep_reward, ep_d) # add the collected SBP and action index to the history data for regression
+            # update the regression models for theta
+            est_error= util_methods.run_regression_rewards_costs_BPBG(episode) 
+
+            min_eign_cvd, min_eign_sbp = util_methods.compute_confidence_intervals_BPBG(L)
             # util_methods.compute_confidence_intervals_2(L, L_prime, 1)
 
-            if random_action:
-                pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
-            else:
-                pi_k, val_k, cost1_k, cost2_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
+            # if random_action:
+            #     pi_k, val_k, cost1_k, log, q_k = util_methods.compute_extended_LP_random() # use uniform probability to select the action
+            # else:
+            pi_k, val_k, cost1_k, log, q_k = util_methods.compute_extended_LP() # +++++ select policy using the extended LP, by solving the DOP problem, equation (10)
             
             t2 = time.time()
             dtime = t2 - t1
 
             if log != 'Optimal':
-                #print('+++++Infeasible solution in Extended LP, continue to the next patient')
-                #continue
-
                 print('+++++Infeasible solution in Extended LP, select the baseline policy instead')
                 select_baseline_policy_ct += 1
 
@@ -190,9 +190,9 @@ for sim in range(NUMBER_SIMULATIONS):
                 cost1_k = cost1_b
                 q_k = q_b
         
-        est_err.append(error)
+        est_err.append(est_error)
         min_eign_cvd_list.append(min_eign_cvd)
-        min_eign_sbp_list.append(min_eign_sbp)
+        min_eign_cost_list.append(min_eign_sbp)
 
         max_cost1 = max(max_cost1, cost1_k[s_idx_init, 0])
         print('s_idx_init={}, cost1_k[s_idx_init, 0]={:.2f}, CONS1={:.2f}, max_cost1={:.2f},'.format(
@@ -230,51 +230,43 @@ for sim in range(NUMBER_SIMULATIONS):
         a_list = []
         ep_action_code = [] # record the action code for each step in a episode
         ep_state_code = []
-        ep_reward = [] # record the CVDRisk for each step in a episode  
+        ep_reward = [] 
+        ep_d = []
         
-        s = s_idx_init # set the state to the initial state
+        s = 0 
         for h in range(EPISODE_LENGTH): # for each step in current episode
             
             prob = pi_k[s, h, :]           
-            if random_action:
-                a = int(np.random.choice(ACTIONS, 1, replace = True)) # sample actions uniformly
-            else:
-                a = int(np.random.choice(ACTIONS, 1, replace = True, p = prob)) # select action based on the policy/probability
+            a = int(np.random.choice(ACTIONS, 1, replace=True, p=prob)) # select action based on the policy/probability
 
             a_list.append(a)
-            ep_action_code.append(action_index_to_code[a]) 
-            ep_state_code.append(state_index_to_code[s])
-
-            next_state, rew, cost1, cost2 = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
-
-            xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(ep_context_vec, s, a)
-            
-            util_methods.add_design_vector(xa_vec)
+            ep_action_code.append(a) 
+            ep_state_code.append(s)
+            next_state, rew, cost1, demand = util_methods.step(s, a, h) # take the action and get the next state, reward and cost
+            # xa_vec, cvd_xsa_vec = util_methods.make_x_a_vector(ep_context_vec, s, a)
+            # util_methods.add_design_vector(xa_vec)
 
             ep_count[s, a] += 1 # update the counter
             ep_count_p[s, a, next_state] += 1
             ep_cost.append(cost1) 
-            ep_hba1c_cont.append(cost2)
             ep_reward.append(rew)
-
+            ep_d.append(demand)
             s = next_state
-            # sbp_fb_dis = discretize_sbp(cost)
-            #s = sbp_fb_dis # use the sbp_fb_dis as the next state
         
-        # pi_k = None
-        # q_k = None
         # dump results out every x episodes
-        if (episode != 0 and episode%500== 0) or episode == NUMBER_EPISODES-1:
+        if (episode != 0 and episode%100== 0) or episode == NUMBER_EPISODES-1:
 
             filename = 'output/CONTEXTUAL_opsrl' + str(RUN_NUMBER) + '.pkl'
             f = open(filename, 'ab')
-            pickle.dump([est_err, C1_est_err, min_eign_sbp_list, 
-                        min_eign_hba1c_list, min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, 
+            pickle.dump([est_err, min_eign_cost_list, 
+                        min_eign_cvd_list, NUMBER_SIMULATIONS, NUMBER_EPISODES, 
                         objs, cons1, pi_k, NUMBER_INFEASIBILITIES, q_k], f)
             f.close()
 
             filename = 'output/CONTEXTUAL_theta.pkl'
             with open(filename, 'wb') as f:
-                pickle.dump([util_methods.theta_regr], f)
+                pickle.dump([util_methods.learned_theta], f)
         
         episode += 1
+
+print('Done')
