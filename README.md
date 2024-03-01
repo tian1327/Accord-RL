@@ -245,3 +245,20 @@ python Contextual.py
 # plots
 python plot_all_separate.py 30000
 ```
+
+20240301 Fri
+1. Finalize the regret plots
+```bash
+# for inventory control problem
+cd InventoryControl/DOPE
+python plot_all_separate.py
+
+# for BPBGClass batchsize comparison
+cd BPBGClass/Contextual_shuffle
+python plot_all_separate.py
+
+# for BPBG comparison of COPS and DOPE, etc.
+cd BPBGClass/DOPE
+python plot_all_separate.py
+
+```

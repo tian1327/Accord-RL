@@ -149,7 +149,7 @@ for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, m
     obj_opsrl_mean = data['obj_opsrl_mean']
     con1_opsrl_mean = data['con1_opsrl_mean']
     con2_opsrl_mean = data['con2_opsrl_mean']
-    axs.plot(x_o, obj_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval, linestyle=linestyle)
+    axs.plot(x_o, obj_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='3', markeredgewidth='2',markevery=mark_every_interval, linestyle=linestyle)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"_SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'_HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linestyle="solid", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
@@ -187,7 +187,7 @@ for data, label, clr, mkr, linestyle in zip(data_list, label_list, color_list, m
     # axs.plot(x_o, obj_opsrl_mean[::L], label = label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr,markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con1_opsrl_mean[::L], label = label+"_SBP", color=clr, alpha=0.6, linestyle="dotted", linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
     # axs[1].plot(x_o, con2_opsrl_mean[::L], label = label+'_HBA1C', color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval)
-    axs.plot(x_o, con1_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='5', markeredgewidth='3',markevery=mark_every_interval, linestyle=linestyle)
+    axs.plot(x_o, con1_opsrl_mean[::L], label=label, color=clr, alpha=0.6, linewidth=2.5, marker=mkr, markersize='3', markeredgewidth='2',markevery=mark_every_interval, linestyle=linestyle)
     
 
 axs.grid(alpha=0.2)
