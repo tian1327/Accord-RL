@@ -10,7 +10,7 @@
 <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4583667"><img src='https://img.shields.io/badge/SSRN-Paper-red' alt='Paper PDF'></a>
 </div>
 
-This repository contains the implementation of the `Contextual Optimixtic-Pessimistic Safe exploration (COPS)` reinforcement learning algorithm. We also implement baseline safe RL methods, including DOPE, OptCMDP, and OptPessLP. The implementation is tested on the ACCORD dataset for the BPClass, BGClass, and BPBGClass cases, as well as the inventory control problem.
+This repository contains the implementation of the `Contextual Optimistic-Pessimistic Safe exploration (COPS)` reinforcement learning algorithm. We also implement baseline safe RL methods, including DOPE, OptCMDP, and OptPessLP. The implementation is tested on the ACCORD dataset for blood pressure and blood glucose management, as well as the inventory control problem.
 
 
 <!-- ![teaser](assets/teaser_v7.png) -->
