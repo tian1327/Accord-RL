@@ -1,4 +1,4 @@
-name: tf
+name: cops
 channels:
   - conda-forge
   - anaconda

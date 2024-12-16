@@ -13,7 +13,7 @@ plots/
 *.csv
 *.vscode
 
-regret_plots/
+# regret_plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

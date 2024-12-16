@@ -1,34 +1,59 @@
-# Accord-RL
-Safe RL for Healthcare
+<div align="center">
+<h1>Safe Reinforcement Learning with Contextual<br>Information: Theory and Applications</h1>
 
-[Slides](https://docs.google.com/presentation/d/1FEpQrTIzbyv5q6Vs8AI1u_axD3H4F-SUG1MbFUCMjrk/edit#slide=id.g24666924b86_1_29)
+[**Junyu Cao**](https://junyucao.com/)<sup>1*</sup> · [**Esmaeil Keyvanshokooh**](https://ekshokooh.github.io/)<sup>2*</sup> · [**Tian Liu**](https://tian1327.github.io/)<sup>2&dagger;</sup>
 
-### To install environment
-`conda env create -f environment_linux.yml` or `conda env create -f environment_Mac.yml`
+<sup>1</sup>University of Texas at Austin&emsp;&emsp;&emsp;<sup>2</sup>Texas A&M University
+<br>
+*equal contribution&emsp; &dagger;code implementation
 
-`conda activate tf`  
+<a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4583667"><img src='https://img.shields.io/badge/SSRN-Paper-red' alt='Paper PDF'></a>
+</div>
 
-### Install Gurobi solver if desired
+This repository contains the implementation of the `Contextual Optimixtic-Pessimistic Safe exploration (COPS)` reinforcement learning algorithm. We also implement baseline safe RL methods, including DOPE, OptCMDP, and OptPessLP. The implementation is tested on the ACCORD dataset for the BPClass, BGClass, and BPBGClass cases, as well as the inventory control problem.
 
-Using Gurobi solver is about 25% faster than Pulp solver in our experiment.
 
-`conda config --add channels https://conda.anaconda.org/gurobi`  
-`conda install gurobi`   
+<!-- ![teaser](assets/teaser_v7.png) -->
 
-Run the license get commandline after applying for academic license in your account.  
+## News
+- **2024-12-16:** COPS code released.
+- **2023-09-25:** [ssrn paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4583667) released.
 
-`conda remove gurobi`
 
-To export current environment: `conda env export > environment.yml`
+## Usage
+
+### Install conda environment
+```bash
+# for Linux machine
+conda env create -f environment_linux.yml
+
+# or for Mac
+conda env create -f environment_Mac.yml
+
+# activate the environment
+conda activate cops
+```
+You might need to install [Gurobi optimization solver](https://www.gurobi.com/academia/academic-program-and-licenses/) if desired. 
+```bash
+conda config --add channels https://conda.anaconda.org/gurobi
+conda install gurobi
+
+# run the license get commandline after applying for academic license in your account.
+
+# to remove gurobi solver, use
+conda remove gurobi
+```
+
+### Running Experiments
+
+In this work, for ACCORD dataset, we explored 3 cases: BPClass only, BGClass only, and BPClass+BGClass (Top2 BP + Top2 BG, Top4 BP + Top4 BG). Navigate to the corresponding folder to run the codes. The following commands should work for all 3 cases.
+
+
+#### Data Preparation
+Create the corresponding datasets for each case by running the `create_datasets_contextual.ipynb` script in each folder. This will create the datasets for the corresponding case which are saved in the `data/` folder. 
 
 ---
-
-In this work, we explored 3 cases: BPClass only, BGClass only, and BPClass+BGClass (Top2 BP+ Top2 BG, Top4 BP+ Top4 BG). Navigate to the corresponding folder to run the codes. The following commands should work for all 3 cases.
-
-We compared the Contextual/COPS algorithm with DOPE, along with other two baselines, OptCMDP and OptPessLP.
-
-
-#### Contextual/COPS
+#### Running COPS
 
 1. Data file used:
    * BPClass: `BPClass/data/ACCORD_BPClass_v2_merged_Contextual.csv`
@@ -38,15 +63,15 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
    
 2. Train true offline models for P, R, C using all data
    * Run `model_contextual.ipynb`: 
-     * take above input datafile
+     * take above input data files
      * discretize the context features
      * basic model settings, action space, state space etc.
      * P is estimated the same way (empirical estimates) as DOPE, output model settings to `output/model_contextual.pkl`
   
    * Run `train_feedback_estimators.ipynb`：get the R and C offline estimators
      * takes `../data/ACCORD_BPBGClass_v2_contextual.csv` as input
-     * R / CVDRisk: logistic regression with (context_vector, state, action) 
-     * C / SBP or Hba1c: linear regression with (context_vector, action) 
+     * R (CVDRisk): logistic regression with (context_vector, state, action) 
+     * C (SBP or Hba1c): linear regression with (context_vector, action) 
      * Offline R and C models are saved to `output/CVDRisk_estimator.pkl`, `output/A1C_feedback_estimator.pkl`, `output/SBP_feedback_estimator.pkl`
 
 3. Run `python Contextual.py` or `python Contextual.py 1` to run the main contextual algorithm. Use 1 to specify using GUROBI solver.
@@ -55,9 +80,9 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
    
 5. `test.ipynb` is used to debug the code.
 
+---
 
 #### DOPE
-
 1. Run `model.ipynb` to: 
    * data file used for each case:
      * BPClass: `../data/ACCORD_BPClass_v2.csv`
@@ -82,7 +107,7 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
    * run `python plot1.py output/DOPE_opsrl150.pkl 30000`
    * plots are in `output/` folder
 
-
+---
 #### OptCMDP
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run this again.
@@ -92,6 +117,8 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 3. `python plot1.py output/OptCMDP_opsrl10.pkl 10000`
    * should expect to see non-zero Constraint Regret
 
+
+---
 #### OptPessLP
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run again.
@@ -102,14 +129,14 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 3. `python plot1.py output/OptPessLP_opsrl10.pkl 10000`
    * should expect to see increasing linear Objective Regret with episodes, and 0 Connstraint Regret
 
-
+---
 #### Plot Regrets Comparison
 
 * All models are run for 3e4 episodes, navigate to each folder and run `python plot_all.py 30000` to compare all models.
 
 * Final results for all 3 cases are stored in folders `output_final/`.
 
-
+---
 #### Compare COPS with Clinician actions and feedback
 
 1. Navigate to `/Contextual` folder for each of the 3 cases, run the `model_contextual.ipynb` again to generate 
@@ -125,140 +152,28 @@ We compared the Contextual/COPS algorithm with DOPE, along with other two baseli
 4. Run `Table_and_Plots_v3_LP_samepatient.ipynb` to get the plots and tables.
 
 ---
-2023/08/17 Thursday
+Refer to the file [tian_log.md](tian_log.md) for more detailed examples of running the code.
 
-1. plot the regrets plots again by changing the blue background to white background
-```bash
-# navigate to each DOPE folder for each case, BPClass, BGClass, BPBGClass
-python plot_all.py 30000
 
-# for BPBGClass (2+2), plot the regrets separately
-python plot_all_separate.py 30000
+## Acknowledgment
+This code base is developed based on the following project. We sincerely thank the authors for open-sourcing their project.
 
+- [DOPE](https://github.com/archanabura/DOPE-DoublyOptimisticPessimisticExploration)
+
+## Citation
+
+If you find our project useful, please consider citing:
+
+in latex format:
+```bibtex
+@article{cao2023safe,
+  title={Safe Reinforcement Learning with Contextual Information: Theory and Applications},
+  author={Cao, Junyu and Keyvanshokooh, Esmaeil and Liu, Tian},
+  journal={SSRN: https://ssrn.com/abstract=4583667},
+  year={2023}
+}
 ```
-
-2023/08/23 Wednesday
-
-1. Finished the scripts for running COPS-MM again with use SBP and A1C range, updated the range codes manually. Run the simulation test to get the simulation results.
-   * `python Contextual.py 1`
-   * `python Contextual_test.py 1`
-2. Copy the simulation results to the `NumericalResults/` folder and run the analysis notebook
-
-
-2024/01/31 Wednesday
-1. Created the `Contextual_SBP90130_A1C7.9_shuffle` folder to run the COPS-MM with shuffled patients
-2. The time cost is a big issue here, I did not implement the code to record a patient's history record but just randomly sample. I think this would be the same as randomly sample a patient from the dataset. And even if so, we only have like 3000 patients rather than the 3e4 episodes we used to have in the sequential case.
-```bash
-# use the old non-shuffled base models and pkl files
-# run COP-MM with shuffled patients, DO NOT use GUROBI solver as it is making trouble, unsolved base policy, will keep skipping to next patients
-
-# here I set the k0=200, which I could have used K0=-1
-python Contextual.py 
-
-# plot the regrets
-python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
-
+or in word format:
 ```
-
-2024/02/06 Tuesday
-1. Created the `Contextual_batch.py` for running the batch update of COPS-MM. For efficiency consideration (speed, RAM), I implemented the patients pool to define how many patients can interact. The batch update is conducted within the patients pool util the patients pool depletes. Then we re-sample the patients pool and continue the batch update. 
-```bash
-# in HPRC server
-cd BPBGClass_4+4/Contextual_SBP90130_A1C7.9_shuffle/
-python Contextual_batch.py
-python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
-
-# running 4+4 in LENSS server, use gurobi solver
-cd BPBGClass_4+4/Contextual_SBP90130_A1C7.9_shuffle_grobi/
-python Contextual_batch.py 1
-python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
-```
-2. Note that, very importantly, the regre plot we show in the paper is from BPBG Contextual 2+2 case, since it has better plots than 4+4 case. The regret plots for 4+4 is ugly and prof have decided to just use the one from the 2+2 case.
-
-```bash
-cd /scratch/user/ltmask/Accord-RL/BPBGClass/Contextual_shuffle
-python Contextual_batch.py
-```
-
-2024/02/13 Tuesday
-1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case
-```bash
-cd BPBGClass/Contextual_shuffle/
-python Contextual_batch.py 20
-python Contextual_batch.py 40
-python Contextual_batch.py 100
-
-# plot the comparison of batchsize
-python plot_all_separate.py 3000
-```
-
-2024/02/14 Wednesday
-1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case, define batchsize as # of finished patients
-```bash
-cd BPBGClass/Contextual_shuffle/
-python Contextual_batch_numpatient.py 10
-python Contextual_batch_numpatient.py 20
-python Contextual_batch_numpatient.py 40
-python Contextual_batch_numpatient.py 100
-
-# plot the test results
-python plot1.py output_bs10/CONTEXTUAL_opsrl100.pkl 40
-
-# plot the comparison of batchsize
-python plot_all_separate.py 3000
-```
-
-2024/02/16 Friday
-1. Plot the batch update comparison COPS-MM vs. batch
-```bash
-cd Accord-RL/BPBGClass/Contextual_shuffle
-python plot_all_separate.py 
-```
-
-2024/02/24-25 Sat- Sun
-1. Setup the inventory control problem, run DOPE, OptCMDP, OptPessLP
-```bash
-cd Accord-RL/InventoryControl/DOPE
-
-# setup the model
-python model-in.py
-
-# run different algorithms
-python DOPE-in.py
-python OptCMDP-in.py
-python OptPessLP-in.py
-
-# plots
-python plot_all_separate.py 30000
-```
-
-2. Run the Contextual algorithm for the inventory control problem
-```bash
-cd Accord-RL/InventoryControl/Contextual
-
-# setup the model
-python model_contextual.py
-
-# run the algorithm
-python Contextual.py
-
-# plots
-python plot_all_separate.py 30000
-```
-
-20240301 Fri
-1. Finalize the regret plots
-```bash
-# for inventory control problem
-cd InventoryControl/DOPE
-python plot_all_separate.py
-
-# for BPBGClass batchsize comparison
-cd BPBGClass/Contextual_shuffle
-python plot_all_separate.py
-
-# for BPBG comparison of COPS and DOPE, etc.
-cd BPBGClass/DOPE
-python plot_all_separate.py
-
+Cao, Junyu and Keyvanshokooh, Esmaeil and Liu, Tian, Safe Reinforcement Learning with Contextual Information: Theory and Applications (September 25, 2023). Available at SSRN: https://ssrn.com/abstract=4583667 or http://dx.doi.org/10.2139/ssrn.4583667
 ```
