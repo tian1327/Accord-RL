@@ -9,7 +9,7 @@ python plot_all.py 30000
 python plot_all_separate.py 30000
 
 ```
-
+---
 2023/08/23 Wednesday
 
 1. Finished the scripts for running COPS-MM again with use SBP and A1C range, updated the range codes manually. Run the simulation test to get the simulation results.
@@ -17,7 +17,7 @@ python plot_all_separate.py 30000
    * `python Contextual_test.py 1`
 2. Copy the simulation results to the `NumericalResults/` folder and run the analysis notebook
 
-
+---
 2024/01/31 Wednesday
 1. Created the `Contextual_SBP90130_A1C7.9_shuffle` folder to run the COPS-MM with shuffled patients
 2. The time cost is a big issue here, I did not implement the code to record a patient's history record but just randomly sample. I think this would be the same as randomly sample a patient from the dataset. And even if so, we only have like 3000 patients rather than the 3e4 episodes we used to have in the sequential case.
@@ -32,7 +32,7 @@ python Contextual.py
 python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 
 ```
-
+---
 2024/02/06 Tuesday
 1. Created the `Contextual_batch.py` for running the batch update of COPS-MM. For efficiency consideration (speed, RAM), I implemented the patients pool to define how many patients can interact. The batch update is conducted within the patients pool util the patients pool depletes. Then we re-sample the patients pool and continue the batch update. 
 ```bash
@@ -52,7 +52,7 @@ python plot1.py output/CONTEXTUAL_opsrl100.pkl 2500
 cd /scratch/user/ltmask/Accord-RL/BPBGClass/Contextual_shuffle
 python Contextual_batch.py
 ```
-
+---
 2024/02/13 Tuesday
 1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case
 ```bash
@@ -64,7 +64,7 @@ python Contextual_batch.py 100
 # plot the comparison of batchsize
 python plot_all_separate.py 3000
 ```
-
+---
 2024/02/14 Wednesday
 1. Implemented the overlapping batch update with fixed patient interval, use the BPBGClass 2+2 case, define batchsize as # of finished patients
 ```bash
@@ -80,14 +80,14 @@ python plot1.py output_bs10/CONTEXTUAL_opsrl100.pkl 40
 # plot the comparison of batchsize
 python plot_all_separate.py 3000
 ```
-
+---
 2024/02/16 Friday
 1. Plot the batch update comparison COPS-MM vs. batch
 ```bash
 cd Accord-RL/BPBGClass/Contextual_shuffle
 python plot_all_separate.py 
 ```
-
+---
 2024/02/24-25 Sat- Sun
 1. Setup the inventory control problem, run DOPE, OptCMDP, OptPessLP
 ```bash
@@ -118,7 +118,7 @@ python Contextual.py
 # plots
 python plot_all_separate.py 30000
 ```
-
+---
 20240301 Fri
 1. Finalize the regret plots
 ```bash
