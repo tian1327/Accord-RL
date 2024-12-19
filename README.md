@@ -5,7 +5,7 @@
 
 <sup>1</sup>University of Texas at Austin&emsp;&emsp;&emsp;<sup>2</sup>Texas A&M University
 <br>
-*equal contribution&emsp; &dagger;code implementation
+*equal contribution&emsp; &dagger;coding and experiments
 
 <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4583667"><img src='https://img.shields.io/badge/SSRN-Paper-red' alt='Paper PDF'></a>
 </div>
@@ -86,7 +86,7 @@ Create the corresponding datasets for each case by running the `create_datasets_
 
 ---
 
-#### DOPE
+#### Running DOPE
 1. Run `model.ipynb` to: 
    * data file used for each case:
      * BPClass: `../data/ACCORD_BPClass_v2.csv`
@@ -112,7 +112,7 @@ Create the corresponding datasets for each case by running the `create_datasets_
    * plots are in `output/` folder
 
 ---
-#### OptCMDP
+#### Running OptCMDP
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run this again.
 2. Run `python OptCMDP.py 1` to run the OptCMDP algorithm
@@ -123,7 +123,7 @@ Create the corresponding datasets for each case by running the `create_datasets_
 
 
 ---
-#### OptPessLP
+#### Running OptPessLP
 
 1. Use the same model preparation scheme as in DOPE by running `model.ipynb`. If you have run this for DOPE, no need to run again.
 2. Run `python OptPessLP.py` to run the algorithm
